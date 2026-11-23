@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1c3f63">
+  <meta name="description" content="MDM : démonstration interactive de l'assistant d'indexation documentaire.">
+  <title>MDM | Assistant d'indexation</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand" aria-label="MDM">MDM</div>
+      <nav class="topnav" aria-label="Navigation principale, autres modules indisponibles">
+        <span class="navitem locked" aria-disabled="true" title="Indisponible dans cette démonstration">Accueil</span>
+        <span class="navitem locked" aria-disabled="true" title="Indisponible dans cette démonstration">Dossiers</span>
+        <span class="navitem current" aria-current="page">Indexation</span>
+        <span class="navitem locked" aria-disabled="true" title="Indisponible dans cette démonstration">Recherche</span>
+        <span class="navitem locked" aria-disabled="true" title="Indisponible dans cette démonstration">Statistiques</span>
+      </nav>
+      <div class="useritem" aria-disabled="true">Utilisateur <span class="user-square" aria-hidden="true">□</span></div>
+    </header>
+    <div class="breadcrumbs" id="breadcrumbs" aria-label="Fil d'Ariane"></div>
+    <div class="workspace">
+      <aside class="sidebar" aria-label="Étapes de l'indexation">
+        <div class="sidebar-title">INDEXATION</div>
+        <button class="step active" data-step="1" type="button"><span class="step-circle">1</span> Document</button>
+        <button class="step" data-step="2" type="button"><span class="step-circle">2</span> Indexation</button>
+        <button class="step" data-step="3" type="button"><span class="step-circle">3</span> Révision finale</button>
+      </aside>
+      <main id="view" class="view" tabindex="-1"></main>
+    </div>
+    <footer class="footer">
+      <span>MDM · Maquette interactive, données et recommandations simulées</span>
+      <div class="footer-actions" id="footerActions"></div>
+    </footer>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.txt,.rtf,.odt" hidden>
+</body>
+</html>
