@@ -150,6 +150,7 @@
     state.step = step;
     saveState();
     render();
+    if (step === 2) setFocus(state.activeType, state.indexations[state.activeType]?.terms?.length || 0);
     window.scrollTo({top:0, behavior:'auto'});
   }
   function metaLine() { return [state.jurisdiction, state.procedure, state.documentType, humanDate(), state.lang].join(' · '); }
@@ -183,7 +184,7 @@
         <div class="intro-left">
           <section class="card"><div class="card-head">Document</div><div class="card-body">
             <div class="file-row" id="fileDropZone">
-              <button type="button" class="outline-btn" data-action="attach-file">♧ &nbsp;Joindre un document…</button>
+              <button type="button" class="outline-btn" data-action="attach-file">📎 &nbsp;Joindre un document…</button>
               <div class="file-name ${state.fileName ? '' : 'empty'}"><span title="${escapeHtml(state.fileName)}">${escapeHtml(state.fileName || 'Aucun fichier sélectionné')}</span>${state.fileName ? '<button type="button" class="tiny-icon-btn" data-action="remove-file" aria-label="Retirer le fichier">×</button>' : ''}</div>
             </div>
           </div></section>
@@ -201,7 +202,7 @@
           <p class="tiny-note">Champs générés d'après la juridiction, la catégorie de procédure et le type de document. Correspondances simulées pour cette PoC.</p>
         </div></section>
       </div>
-      <div class="inline-message">Après avoir joint un fichier, les métadonnées sont renseignées avec des exemples aléatoires. Elles restent modifiables. Le fichier n'est ni analysé ni envoyé.</div>`;
+      `;
     footerActions.innerHTML = `${button('Réinitialiser', 'reset')}${button('Continuer', 'continue', true)}`;
   }
   function getDocPreview() {
@@ -218,10 +219,10 @@
     const parts = (d.terms || []).map((term, index) => `
       <div class="term-wrap">
         ${index ? '<span class="term-divider">-</span>' : ''}
-        <div class="term-chip"><input aria-label="${escapeHtml(type)}, terme ${index+1}" data-term-type="${escapeHtml(type)}" data-term-index="${index}" value="${escapeHtml(term)}" autocomplete="off" spellcheck="false"><button type="button" class="remove-term" data-action="remove-term" data-type="${escapeHtml(type)}" data-index="${index}" aria-label="Supprimer ce terme">×</button></div>
+        <div class="term-chip"><textarea rows="2" aria-label="${escapeHtml(type)}, terme ${index+1}" data-term-type="${escapeHtml(type)}" data-term-index="${index}" autocomplete="off" spellcheck="false">${escapeHtml(term)}</textarea><button type="button" class="remove-term" data-action="remove-term" data-type="${escapeHtml(type)}" data-index="${index}" aria-label="Supprimer ce terme">×</button></div>
         <div class="dropdown" hidden></div>
       </div>`).join('');
-    return `<div class="chip-list">${parts}<div class="term-wrap">${d.terms.length ? '<span class="term-divider">-</span>' : ''}<div class="term-chip input-empty"><input aria-label="${escapeHtml(type)}, terme suivant" data-term-type="${escapeHtml(type)}" data-term-index="${d.terms.length}" value="" placeholder="…" autocomplete="off" spellcheck="false"></div><div class="dropdown" hidden></div></div></div><p class="editor-hint"><kbd>Tab</kbd> ou <kbd>Entrée</kbd> crée la case suivante. La longueur est libre.</p>`;
+    return `<div class="chip-list">${parts}<div class="term-wrap">${d.terms.length ? '<span class="term-divider">-</span>' : ''}<div class="term-chip input-empty"><textarea rows="2" aria-label="${escapeHtml(type)}, terme suivant" data-term-type="${escapeHtml(type)}" data-term-index="${d.terms.length}" placeholder="…" autocomplete="off" spellcheck="false"></textarea></div><div class="dropdown" hidden></div></div></div><p class="editor-hint"><kbd>Tab</kbd> ou <kbd>Entrée</kbd> crée la case suivante. La longueur est libre.</p>`;
   }
   function renderEditor(type, index) {
     const d = state.indexations[type];
@@ -244,9 +245,9 @@
     const isText = FREE_TEXT_TYPES.has(type);
     const proposals = isText ? catalog.texts : catalog.chains.map(chain => chain.join(' - '));
     return `<div class="suggest-body"><h3>${isText ? 'Textes complets' : 'Chaînes complètes'}</h3>
-      ${proposals.map(text => `<button class="suggestion" type="button" data-action="apply-full" data-type="${escapeHtml(type)}" data-value="${escapeHtml(text)}">${escapeHtml(text)}</button>`).join('')}
+      ${proposals.slice(0,2).map(text => `<button class="suggestion" type="button" data-action="apply-full" data-type="${escapeHtml(type)}" data-value="${escapeHtml(text)}">${escapeHtml(text)}</button>`).join('')}
       <div class="suggest-sep"></div><h3>${isText ? 'Suite du texte' : 'Terme suivant'}</h3>
-      ${getNextOptions(type).slice(0, 4).map(text => `<button type="button" class="suggestion ${text.endsWith('*') ? 'ai-suggestion' : ''}" data-action="apply-next" data-type="${escapeHtml(type)}" data-value="${escapeHtml(text)}">${escapeHtml(text)}</button>`).join('')}
+      ${getNextOptions(type).slice(0, 3).map(text => `<button type="button" class="suggestion ${text.endsWith('*') ? 'ai-suggestion' : ''}" data-action="apply-next" data-type="${escapeHtml(type)}" data-value="${escapeHtml(text)}">${escapeHtml(text)}</button>`).join('')}
       <p class="muted-hint">* Proposition nouvelle de l'IA, à faire valider.</p>
       <p class="muted-hint">Suggestions d'exemple, sans modèle d'IA réel.</p></div>`;
   }
@@ -307,12 +308,12 @@
     $$('.dropdown').forEach(drop => { if (drop !== $('.dropdown', wrap)) drop.hidden = true; });
     const dropdown = $('.dropdown', wrap);
     const term = input.value.trim().toLocaleLowerCase('fr');
-    const results = getNextOptions(type).filter(text => !term || text.toLocaleLowerCase('fr').includes(term)).slice(0, 5);
+    const results = getNextOptions(type).filter(text => !term || text.toLocaleLowerCase('fr').includes(term)).slice(0, 3);
     dropdown.innerHTML = results.map(text => `<button type="button" class="${text.endsWith('*') ? 'ai-option' : ''}" data-action="insert-term" data-type="${escapeHtml(type)}" data-index="${escapeHtml(input.dataset.termIndex)}" data-value="${escapeHtml(text)}">${escapeHtml(text)}</button>`).join('');
     dropdown.hidden = results.length === 0;
   }
   function setFocus(type, index) {
-    const el = $$('input[data-term-type]').find(node => node.dataset.termType === type && Number(node.dataset.termIndex) === index);
+    const el = $$('[data-term-type]').find(node => node.dataset.termType === type && Number(node.dataset.termIndex) === index);
     if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
   }
   function insertTerm(type, index, term) {
@@ -455,7 +456,7 @@
           state.activeType=type;
           renderStep2();setFocus(type,idx+1);
         } else {
-          const next=$$(`input[data-term-type="${CSS.escape(type)}"]`).find(el=>Number(el.dataset.termIndex)===idx+1);
+          const next=$$(`[data-term-type="${CSS.escape(type)}"]`).find(el=>Number(el.dataset.termIndex)===idx+1);
           if (next) next.focus();
         }
       }
