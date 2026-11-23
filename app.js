@@ -4,7 +4,7 @@
 (() => {
   'use strict';
 
-  const STORAGE_KEY = 'mdm-poc2-draft-v1';
+  const STORAGE_KEY = 'mdm-poc2-draft-v2';
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
@@ -30,6 +30,64 @@
     'Résumé': ['Mots-clés', 'Cotes bulletin']
   };
   const FREE_TEXT_TYPES = new Set(['Objet']);
+  const LANGUAGES = [
+    'Allemand', 'Anglais', 'Bulgare', 'Croate', 'Danois', 'Espagnol',
+    'Estonien', 'Finnois', 'Français', 'Grec', 'Hongrois', 'Irlandais',
+    'Italien', 'Letton', 'Lituanien', 'Maltais', 'Néerlandais', 'Polonais',
+    'Portugais', 'Roumain', 'Slovaque', 'Slovène', 'Suédois', 'Tchèque'
+  ];
+  // Liste de démonstration : aucune proposition n'est produite par un modèle réel.
+  const TERMS_BY_TYPE = {
+    'Indicateurs': ["Droit de l'Union", 'Recours en annulation', 'Recevabilité',
+      'Intérêt à agir', 'Compétence juridictionnelle', 'Renvoi préjudiciel', 'Interprétation',
+      'Principe de proportionnalité', 'Motivation de la décision', 'Protection juridictionnelle effective',
+      'Délai de recours', 'Charge de la preuve', 'Égalité de traitement', 'Sécurité juridique',
+      'Droits fondamentaux', 'Marché intérieur', 'Libre circulation des marchandises',
+      'Liberté de prestation de services', 'Réglementation nationale', 'Contrôle juridictionnel',
+      "Actes des institutions de l'Union", 'Procédure accélérée', 'Effet direct',
+      'Responsabilité de l’État membre', 'Nouvelle articulation des moyens *',
+      'Contrôle spécifique des conséquences juridiques *'],
+    'Descripteurs': ["Droit de l'Union", 'Annulation', 'Conditions de recevabilité',
+      'Intérêt à agir', 'Acte attaqué', 'Mesures provisoires', 'Recours direct',
+      'Exception d’illégalité', 'Motivation insuffisante', 'Contrôle juridictionnel',
+      'Examen des moyens', 'Légalité de la décision', 'Proportionnalité',
+      'Égalité de traitement', 'Droit à un recours effectif', 'Procédure devant le Tribunal',
+      'Règles de preuve', 'Obligation de motivation', 'Protection des données',
+      'Droit institutionnel', 'Application du règlement', 'Libre circulation',
+      'Protection de la confiance légitime', 'Nouvelle distinction procédurale *',
+      'Qualification inédite du grief *'],
+    'Mots-clés': ['Renvoi préjudiciel', 'Interprétation', "Droit de l'Union",
+      'Recevabilité', 'Compétence', 'Recours direct', 'Marché intérieur',
+      'Propriété intellectuelle', "Marque de l'Union européenne",
+      "Dessins ou modèles de l'Union européenne", 'Droit de la concurrence',
+      'Protection du consommateur', 'Environnement', 'Aides d’État',
+      'Droits fondamentaux', 'Procédure juridictionnelle', 'Légalité',
+      'Proportionnalité', 'Libre circulation', 'Responsabilité',
+      'Protection juridictionnelle', 'Nouvelle question transversale *'],
+    'Cotes bulletin': ['Procédure', 'Recevabilité', 'Jurisprudence',
+      'Compétence', 'Réglementation', 'Protection juridictionnelle',
+      'Contrôle', 'Interprétation', 'Recours', 'Décision', 'Moyens',
+      'Règles de droit', 'Nouvelle cote proposée *']
+  };
+  const NEXT_AFTER = {
+    "Droit de l'Union": ['Recours en annulation', 'Renvoi préjudiciel', 'Libre circulation des marchandises', 'Droits fondamentaux'],
+    'Recours en annulation': ['Recevabilité', 'Intérêt à agir', 'Délai de recours', 'Acte attaqué'],
+    'Recevabilité': ['Intérêt à agir', 'Conditions de recevabilité', 'Compétence juridictionnelle'],
+    'Annulation': ['Conditions de recevabilité', 'Motivation insuffisante', 'Intérêt à agir'],
+    'Renvoi préjudiciel': ['Interprétation', 'Compétence', 'Réglementation nationale'],
+    'Interprétation': ["Droit de l'Union", 'Réglementation', 'Effet direct'],
+    'Conditions de recevabilité': ['Intérêt à agir', 'Délai de recours', 'Contrôle juridictionnel'],
+    'Contrôle juridictionnel': ['Principe de proportionnalité', 'Motivation de la décision', 'Droit à un recours effectif']
+  };
+  function hashText(value) { let h=7; for(const ch of String(value||'')) h=(h*31+ch.charCodeAt(0))>>>0; return h; }
+  function rotate(items, offset) {
+    if (!items.length) return [];
+    const start=((offset%items.length)+items.length)%items.length;
+    return [...items.slice(start),...items.slice(0,start)];
+  }
+  const unique = list => [...new Set(list.filter(Boolean))];
+  function normalized(value) { return String(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('fr'); }
+
   const SAMPLES = [
     {jurisdiction:'Cour', procedure:'Renvoi préjudiciel', documentType:'Préexamen', reference:'C-123/25', lang:'Français'},
     {jurisdiction:'Cour', procedure:'Renvoi préjudiciel', documentType:'DDP', reference:'C-318/24', lang:'Français'},
@@ -88,10 +146,9 @@
     'Cotes bulletin': ['Procédure', 'Recevabilité']
   };
   const emptyState = () => ({
-    step: 1, maxStep: 1, validated: false, fileName: '', jurisdiction: 'Cour',
-    procedure: 'Renvoi préjudiciel', documentType: 'Préexamen', date: '2025-01-15',
-    reference: 'C-123/25', lang: 'Français', activeType: 'Indicateurs', indexations: {},
-    lastSaved: null
+    step: 1, maxStep: 3, validated: false, fileName: '', jurisdiction: '',
+    procedure: '', documentType: '', date: '', reference: '', lang: '',
+    activeType: '', selectedTypes: {}, recommendationSeed: 0, indexations: {}, lastSaved: null
   });
   let state = emptyState();
   try {
@@ -110,19 +167,21 @@
   let focusedType = null;
   let focusedIndex = null;
 
-  function getTypes() { return INDEXATION_RULES[state.documentType] || ['Indicateurs']; }
+  function getTypes() { return INDEXATION_RULES[state.documentType] || []; }
+  function getSelectedTypes() { return getTypes().filter(type => state.selectedTypes?.[type] !== false); }
   function initIndexations() {
+    if (!state.selectedTypes || typeof state.selectedTypes !== 'object') state.selectedTypes = {};
     if (!state.indexations || typeof state.indexations !== 'object') state.indexations = {};
     for (const type of getTypes()) {
       if (!state.indexations[type]) {
         state.indexations[type] = FREE_TEXT_TYPES.has(type)
           ? {format:'text', text: ''}
-          : {format:'terms', terms:[...(sampleTerms[type] || [])]};
+          : {format:'terms', terms:[]};
       }
       if (!FREE_TEXT_TYPES.has(type) && !Array.isArray(state.indexations[type].terms)) state.indexations[type] = {format:'terms', terms:[]};
       if (FREE_TEXT_TYPES.has(type) && typeof state.indexations[type].text !== 'string') state.indexations[type] = {format:'text', text:''};
     }
-    if (!getTypes().includes(state.activeType)) state.activeType = getTypes()[0];
+    if (!getSelectedTypes().includes(state.activeType)) state.activeType = getSelectedTypes()[0] || '';
   }
   initIndexations();
 
@@ -140,17 +199,20 @@
     toastTimeout = setTimeout(() => toast.classList.remove('visible'), 3600);
   }
   function goToStep(step) {
-    if (step > state.maxStep) return;
+    if (step < 1 || step > 3) return;
     state.step = step;
+    saveState();
     render();
     window.scrollTo({top:0, behavior:'auto'});
   }
   function advanceTo(step) {
-    state.maxStep = Math.max(state.maxStep, step);
+    state.maxStep = 3;
     state.step = step;
     saveState();
     render();
-    if (step === 2) setFocus(state.activeType, state.indexations[state.activeType]?.terms?.length || 0);
+    if (step === 2 && state.activeType && state.indexations[state.activeType]?.format === 'terms') {
+      setFocus(state.activeType, state.indexations[state.activeType].terms.length);
+    }
     window.scrollTo({top:0, behavior:'auto'});
   }
   function metaLine() { return [state.jurisdiction, state.procedure, state.documentType, humanDate(), state.lang].join(' · '); }
@@ -159,13 +221,21 @@
     return match ? `${match[3]}/${match[2]}/${match[1]}` : state.date;
   }
   function renderChrome() {
-    const crumbs = ['Nouveau document', "Édition de l'indexation", 'Révision finale'];
-    $('#breadcrumbs').innerHTML = `<span>Dossiers</span><span class="crumb-sep">›</span><span>${escapeHtml(state.reference)}</span><span class="crumb-sep">›</span><span>${escapeHtml(state.documentType)}</span><span class="crumb-sep">›</span><strong>${crumbs[state.step - 1]}</strong>`;
+    const crumbs = [
+      {title:'Indexation', step:1, root:true},
+      {title:'Document', step:1},
+      {title:'Indexation', step:2},
+      {title:'Révision finale', step:3}
+    ];
+    $('#breadcrumbs').innerHTML = crumbs.map((crumb, index) =>
+      `${index ? '<span class="crumb-sep" aria-hidden="true">›</span>' : ''}`+
+      `<button type="button" class="crumb-link ${!crumb.root && state.step===crumb.step ? 'crumb-current' : ''}" data-nav-step="${crumb.step}" ${!crumb.root && state.step===crumb.step ? 'aria-current="step"' : ''}>${crumb.title}</button>`
+    ).join('');
     $$('.step').forEach(button => {
       const step = Number(button.dataset.step);
       button.classList.toggle('active', state.step === step);
-      button.classList.toggle('disabled', step > state.maxStep);
-      button.disabled = step > state.maxStep;
+      button.classList.remove('disabled');
+      button.disabled = false;
       button.setAttribute('aria-current', state.step === step ? 'step' : 'false');
     });
   }
@@ -176,6 +246,9 @@
     if (state.step === 1) renderStep1();
     else if (state.step === 2) renderStep2();
     else renderStep3();
+  }
+  function selectMetaOptions(values, selected) {
+    return `<option value="" ${!selected ? 'selected' : ''}>Sélectionner…</option>` + optionsHtml(values, selected);
   }
   function renderStep1() {
     view.innerHTML = `
@@ -189,17 +262,25 @@
             </div>
           </div></section>
           <section class="card"><div class="card-head">Métadonnées du document</div><div class="card-body"><div class="form-grid">
-            <label for="jurisdiction">Juridiction</label><select id="jurisdiction" data-meta="jurisdiction">${optionsHtml(['Cour', 'Tribunal'], state.jurisdiction)}</select>
-            <label for="procedure">Catégorie de procédure</label><select id="procedure" data-meta="procedure">${optionsHtml(Object.keys(PROCEDURES), state.procedure)}</select>
-            <label for="documentType">Type de document</label><select id="documentType" data-meta="documentType">${optionsHtml(PROCEDURES[state.procedure] || PROCEDURES['Renvoi préjudiciel'], state.documentType)}</select>
+            <label for="jurisdiction">Juridiction</label><select id="jurisdiction" data-meta="jurisdiction">${selectMetaOptions(['Cour', 'Tribunal'], state.jurisdiction)}</select>
+            <label for="procedure">Catégorie de procédure</label><select id="procedure" data-meta="procedure">${selectMetaOptions(Object.keys(PROCEDURES), state.procedure)}</select>
+            <label for="documentType">Type de document</label><select id="documentType" data-meta="documentType">${selectMetaOptions(PROCEDURES[state.procedure] || [], state.documentType)}</select>
             <label for="date">Date</label><input id="date" data-meta="date" type="date" value="${escapeHtml(state.date)}">
             <label for="reference">Référence de l'affaire</label><input id="reference" data-meta="reference" type="text" value="${escapeHtml(state.reference)}" maxlength="60">
-            <label for="lang">Langue</label><select id="lang" data-meta="lang">${optionsHtml(['Français', 'Anglais', 'Espagnol', 'Allemand', 'Italien', 'Néerlandais', 'Portugais'], state.lang)}</select>
+            <label for="lang">Langue</label><select id="lang" data-meta="lang">${selectMetaOptions(LANGUAGES, state.lang)}</select>
           </div></div></section>
         </div>
         <section class="card index-types"><div class="card-head">Types d'indexation requis</div><div class="card-body">
-          ${getTypes().map(type => `<div class="type-item"><span class="check-dot">✓</span><span>${escapeHtml(type)}</span></div>`).join('')}
-          <p class="tiny-note">Champs générés d'après la juridiction, la catégorie de procédure et le type de document. Correspondances simulées pour cette PoC.</p>
+          ${getTypes().length ? `
+            <div class="type-bulk-actions">
+              <button type="button" data-action="select-all-types">Tout sélectionner</button>
+              <span aria-hidden="true">·</span>
+              <button type="button" data-action="deselect-all-types">Tout désélectionner</button>
+            </div>
+            ${getTypes().map(type => `<label class="type-item selectable-type"><input type="checkbox" data-type-toggle="${escapeHtml(type)}" ${state.selectedTypes[type] === false ? '' : 'checked'}><span>${escapeHtml(type)}</span></label>`).join('')}
+            <p class="tiny-note">Seuls les types cochés apparaîtront dans les étapes suivantes. Tous sont sélectionnés par défaut.</p>
+          ` : `<p class="tiny-note">Sélectionnez une catégorie de procédure et un type de document pour afficher les indexations possibles.</p>`}
+          <p class="tiny-note">Correspondances fictives pour cette démonstration.</p>
         </div></section>
       </div>
       `;
@@ -226,30 +307,59 @@
   }
   function renderEditor(type, index) {
     const d = state.indexations[type];
-    return `<section class="card type-editor" data-editor="${escapeHtml(type)}"><div class="card-head type-editor-head"><span>${index+1}. ${escapeHtml(type)}</span><button class="tiny-icon-btn" type="button" data-action="clear-type" data-type="${escapeHtml(type)}" title="Effacer cette indexation" aria-label="Effacer ${escapeHtml(type)}">↶</button></div><div class="editor-area" data-area-type="${escapeHtml(type)}">${d.format === 'text'
+    return `<section class="card type-editor ${state.activeType===type ? 'type-editor-active' : ''}" data-editor="${escapeHtml(type)}"><div class="card-head type-editor-head"><span>${index+1}. ${escapeHtml(type)} ${state.activeType===type ? '<small class="editing-badge">En cours</small>' : ''}</span><button class="tiny-icon-btn" type="button" data-action="clear-type" data-type="${escapeHtml(type)}" title="Effacer cette indexation" aria-label="Effacer ${escapeHtml(type)}">↶</button></div><div class="editor-area" data-area-type="${escapeHtml(type)}">${d.format === 'text'
       ? `<textarea class="free-text" data-free-type="${escapeHtml(type)}" aria-label="Texte libre, ${escapeHtml(type)}" placeholder="Rédigez une phrase ou choisissez une proposition…">${escapeHtml(d.text)}</textarea><p class="editor-hint">Texte libre : une seule réponse finale, sans découpage en termes.</p>`
       : renderTermEditor(type)}</div></section>`;
   }
   function currentCatalog(type) { return CATALOGUE[type] || CATALOGUE['Indicateurs']; }
+  function termPool(type) {
+    return unique([...(TERMS_BY_TYPE[type] || []), ...(currentCatalog(type).next || [])]);
+  }
   function getNextOptions(type) {
-    const catalog = currentCatalog(type);
+    if (!type || !state.indexations[type]) return [];
     const d = state.indexations[type];
-    const known = d?.format === 'terms' ? d.terms : [];
-    const next = [...catalog.next];
-    if (known.includes('Recevabilité') && !next.includes('Intérêt à agir')) next.unshift('Intérêt à agir');
-    return [...new Set(next)];
+    const known = d.format === 'terms' ? d.terms.map(x=>x.trim()).filter(Boolean) : [];
+    const last = known[known.length-1] || '';
+    const matches = NEXT_AFTER[last] || [];
+    const catalog = currentCatalog(type);
+    const shift = hashText(`${type}|${state.reference}|${state.procedure}|${state.recommendationSeed}|${known.join('>')}`);
+    const others = rotate(termPool(type).filter(x=>!known.includes(x)), shift);
+    if (d.format === 'text') return rotate(catalog.next, known.length + shift).slice(0,7);
+    return unique([...matches.filter(x=>!known.includes(x)),...others]).slice(0,9);
+  }
+  function getChainProposals(type) {
+    const catalog = currentCatalog(type);
+    if (FREE_TEXT_TYPES.has(type)) return rotate(catalog.texts,hashText(state.reference + state.recommendationSeed));
+    const saved = (catalog.chains || []).map(x=>[...x]);
+    const pool = termPool(type).filter(x=>!x.endsWith('*'));
+    const randomSeed = hashText(`${type}|${state.recommendationSeed}|${state.reference}|${state.documentType}`);
+    const chains = [...saved];
+    for(let i=0;i<16;i++) {
+      const off=(randomSeed+i*7+Math.floor(i/3))%pool.length;
+      const count=2+(i%4);
+      const chain=unique(Array.from({length:count},(_,j)=>pool[(off+j*5+i)%pool.length]));
+      if(chain.length>1) chains.push(chain);
+    }
+    const d=state.indexations[type];
+    const chosen=(d?.terms||[]).map(x=>x.trim()).filter(Boolean);
+    if (chosen.length) {
+      for(const opt of getNextOptions(type).slice(0,4)) chains.push([...chosen,opt]);
+    }
+    const distinct=unique(chains.map(chain=>chain.join(' - ')));
+    const offset=hashText(`${state.recommendationSeed}|${type}|${chosen.length}|${chosen.slice(-1)[0] || ''}`);
+    return rotate(distinct,offset).slice(0,5);
   }
   function renderRecommendationContent() {
-    const type = state.activeType;
-    const catalog = currentCatalog(type);
-    const isText = FREE_TEXT_TYPES.has(type);
-    const proposals = isText ? catalog.texts : catalog.chains.map(chain => chain.join(' - '));
-    return `<div class="suggest-body"><h3>${isText ? 'Textes complets' : 'Chaînes complètes'}</h3>
-      ${proposals.slice(0,2).map(text => `<button class="suggestion" type="button" data-action="apply-full" data-type="${escapeHtml(type)}" data-value="${escapeHtml(text)}">${escapeHtml(text)}</button>`).join('')}
+    const type=state.activeType;
+    if(!type) return `<div class="suggest-body"><p class="muted-hint">Sélectionnez un champ d'indexation pour afficher des propositions.</p></div>`;
+    const isText=FREE_TEXT_TYPES.has(type);
+    const proposals=getChainProposals(type);
+    return `<div class="suggest-body"><div class="suggest-context">Champ actif : <strong>${escapeHtml(type)}</strong></div><h3>${isText ? 'Textes complets' : 'Chaînes complètes'}</h3>
+      ${proposals.slice(0,4).map(text=>`<button class="suggestion" type="button" data-action="apply-full" data-type="${escapeHtml(type)}" data-value="${escapeHtml(text)}">${escapeHtml(text)}</button>`).join('')}
       <div class="suggest-sep"></div><h3>${isText ? 'Suite du texte' : 'Terme suivant'}</h3>
-      ${getNextOptions(type).slice(0, 3).map(text => `<button type="button" class="suggestion ${text.endsWith('*') ? 'ai-suggestion' : ''}" data-action="apply-next" data-type="${escapeHtml(type)}" data-value="${escapeHtml(text)}">${escapeHtml(text)}</button>`).join('')}
+      ${getNextOptions(type).slice(0,7).map(text=>`<button type="button" class="suggestion ${text.endsWith('*') ? 'ai-suggestion' : ''}" data-action="apply-next" data-type="${escapeHtml(type)}" data-value="${escapeHtml(text)}">${escapeHtml(text)}</button>`).join('')}
       <p class="muted-hint">* Proposition nouvelle de l'IA, à faire valider.</p>
-      <p class="muted-hint">Suggestions d'exemple, sans modèle d'IA réel.</p></div>`;
+      <p class="muted-hint">Suggestions simulées, variables selon le champ et les termes sélectionnés.</p></div>`;
   }
   function refreshRecommendations() {
     const panel = $('#recommendationsContent');
@@ -262,18 +372,20 @@
           <section class="card"><div class="card-head">Vue du document</div><div class="document-preview"><strong>${escapeHtml(state.documentType)}</strong><span>Affaire ${escapeHtml(state.reference)}</span><p>${escapeHtml(getDocPreview())}</p><span class="doc-note">Extrait fictif : le fichier joint n'est pas analysé.</span></div></section>
           <section class="card"><div class="card-head">Données de l'affaire</div><dl class="facts"><dt>Document</dt><dd>${escapeHtml(state.documentType)}</dd><dt>Référence</dt><dd>${escapeHtml(state.reference)}</dd><dt>Date</dt><dd>${escapeHtml(humanDate())}</dd><dt>Langue</dt><dd>${escapeHtml(state.lang)}</dd></dl></section>
         </aside>
-        <div class="edit-main">${getTypes().map((type, i) => renderEditor(type, i)).join('')}</div>
+        <div class="edit-main">${getSelectedTypes().length ? getSelectedTypes().map((type, i) => renderEditor(type, i)).join('') : '<div class="empty-indexations">Aucun type d’indexation sélectionné. Revenez au document pour en activer un.</div>'}</div>
         <aside class="edit-right"><section class="card"><div class="card-head">Recommandations <span style="font-weight:normal;color:#63829d">(${escapeHtml(state.activeType)})</span></div><div id="recommendationsContent">${renderRecommendationContent()}</div></section></aside>
       </div>`;
     footerActions.innerHTML = `${button('Retour', 'back')}${button('Enregistrer', 'save')}${button("Réviser l'indexation", 'review', true)}`;
+    resizeAllTerms();
   }
   function resultText(type) {
     const data = state.indexations[type];
     return data?.format === 'text' ? data.text.trim() : (data?.terms || []).map(v => v.trim()).filter(Boolean).join(' - ');
   }
-  function hasAiProposals() { return getTypes().some(type => resultText(type).includes('*')); }
+  function hasAiProposals() { return getSelectedTypes().some(type => resultText(type).includes('*')); }
   function validateResults() {
-    const missing = getTypes().filter(type => !resultText(type));
+    if (!getSelectedTypes().length) { notify('Veuillez sélectionner au moins un type d’indexation.'); return false; }
+    const missing = getSelectedTypes().filter(type => !resultText(type));
     if (missing.length) { notify(`Veuillez compléter : ${missing.join(', ')}.`); return false; }
     return true;
   }
@@ -284,15 +396,15 @@
         <div class="review-left">
           <section class="card"><div class="card-head">Document</div><div class="file-summary"><div class="pdf-badge">${escapeHtml((state.fileName.split('.').pop() || 'PDF').slice(0, 4).toUpperCase())}</div><div><div class="name">${escapeHtml(state.fileName || 'Document de démonstration')}</div><div class="meta">${escapeHtml(metaLine())}</div></div></div></section>
           <section class="card"><div class="card-head">Résultats finaux de l'indexation</div><div class="result-list">
-            ${getTypes().map((type,i) => `<div class="result-item"><div class="result-heading">${i+1}. ${escapeHtml(type)}</div><div class="result-value">${escapeHtml(resultText(type) || 'Non renseigné')}</div></div>`).join('')}
+            ${getSelectedTypes().map((type,i) => `<div class="result-item"><div class="result-heading">${i+1}. ${escapeHtml(type)}</div><div class="result-value">${escapeHtml(resultText(type) || 'Non renseigné')}</div></div>`).join('')}
             <p class="validation-note">Un seul résultat final par type. Les nouveaux termes nécessitent une validation spécifique.</p>
           </div></section>
           ${state.validated ? '<div class="finish-banner">✓ Indexation validée dans cette démonstration. Aucun enregistrement sur un serveur.</div>' : ''}
         </div>
         <section class="card"><div class="card-head">Vérifications</div><div class="checks">
           ${[
-            ['Types d\'indexation requis identifiés', true],
-            ['Un résultat par type', getTypes().every(type => !!resultText(type))],
+            ['Types d\'indexation choisis', getSelectedTypes().length > 0],
+            ['Un résultat par type sélectionné', getSelectedTypes().every(type => !!resultText(type))],
             ['Ordre des termes conservé', true],
             ['Séparateurs normalisés', true],
             [newTerm ? 'Proposition IA * : validation métier requise' : 'Aucun nouveau terme non validé', !newTerm]
@@ -307,10 +419,35 @@
     if (!wrap) return;
     $$('.dropdown').forEach(drop => { if (drop !== $('.dropdown', wrap)) drop.hidden = true; });
     const dropdown = $('.dropdown', wrap);
-    const term = input.value.trim().toLocaleLowerCase('fr');
-    const results = getNextOptions(type).filter(text => !term || text.toLocaleLowerCase('fr').includes(term)).slice(0, 3);
+    const term = normalized(input.value.trim());
+    const alternatives = unique([...getNextOptions(type),...termPool(type)]);
+    const results = alternatives.filter(text => !term || normalized(text).includes(term)).slice(0, 7);
     dropdown.innerHTML = results.map(text => `<button type="button" class="${text.endsWith('*') ? 'ai-option' : ''}" data-action="insert-term" data-type="${escapeHtml(type)}" data-index="${escapeHtml(input.dataset.termIndex)}" data-value="${escapeHtml(text)}">${escapeHtml(text)}</button>`).join('');
     dropdown.hidden = results.length === 0;
+    sizeTermInput(input);
+  }
+  function sizeTermInput(input) {
+    if (!input || !input.closest('.term-chip')) return;
+    const chip=input.closest('.term-chip');
+    const length=Math.max(...String(input.value || '').split('\n').map(s=>s.length));
+    chip.style.width=Math.min(320,Math.max(160,94+length*5))+'px';
+    input.style.height='auto';
+    input.style.height=Math.max(50,input.scrollHeight+3)+'px';
+  }
+  function resizeAllTerms() { $$('textarea[data-term-type]').forEach(sizeTermInput); }
+  function selectActiveType(type) {
+    if (!getSelectedTypes().includes(type)) return;
+    state.activeType=type;
+    $$('.type-editor').forEach(editor=>{
+      const active=editor.dataset.editor===type;
+      editor.classList.toggle('type-editor-active',active);
+      const tag=$('.editing-badge',editor);
+      if(tag) tag.remove();
+      if(active) $('.type-editor-head span',editor)?.insertAdjacentHTML('beforeend',' <small class="editing-badge">En cours</small>');
+    });
+    const heading=$('.edit-right .card-head');
+    if(heading) heading.innerHTML=`Recommandations <span class="recommendation-type">(${escapeHtml(type)})</span>`;
+    refreshRecommendations();
   }
   function setFocus(type, index) {
     const el = $$('[data-term-type]').find(node => node.dataset.termType === type && Number(node.dataset.termIndex) === index);
@@ -352,10 +489,14 @@
     if (!['jurisdiction','procedure','documentType','date','reference','lang'].includes(key)) return;
     state[key] = value;
     if (key === 'procedure') {
-      state.documentType = PROCEDURES[value][0];
+      state.documentType = '';
       state.indexations = {};
+      state.selectedTypes = {};
     }
-    if (key === 'documentType') state.indexations = {};
+    if (key === 'documentType') {
+      state.indexations = {};
+      state.selectedTypes = {};
+    }
     state.validated = false;
     render();
   }
@@ -372,6 +513,8 @@
     state.date = randomDate();
     state.fileName = file.name;
     state.indexations = {};
+    state.selectedTypes = {};
+    state.recommendationSeed = Math.floor(Math.random()*1000000);
     state.validated = false;
     initIndexations();
     saveState();
@@ -379,6 +522,10 @@
     notify('Métadonnées fictives renseignées. Vous pouvez les modifier.');
   }
   document.addEventListener('click', event => {
+    const crumbButton=event.target.closest('button[data-nav-step]');
+    if(crumbButton) { goToStep(Number(crumbButton.dataset.navStep)); return; }
+    const editorClick=event.target.closest('[data-editor]');
+    if(editorClick && !event.target.closest('[data-action]') && !event.target.closest('textarea')) selectActiveType(editorClick.dataset.editor);
     const stepButton = event.target.closest('button[data-step]');
     if (stepButton && !stepButton.disabled) { goToStep(Number(stepButton.dataset.step)); return; }
     const target = event.target.closest('[data-action]');
@@ -390,7 +537,13 @@
       case 'attach-file': fileInput.click(); break;
       case 'remove-file': state.fileName=''; fileInput.value=''; render(); break;
       case 'reset': state = emptyState(); initIndexations(); try { localStorage.removeItem(STORAGE_KEY); } catch (_) {} fileInput.value=''; render(); notify('Démonstration réinitialisée.'); break;
-      case 'continue': advanceTo(2); break;
+      case 'continue':
+        if (!getSelectedTypes().length) { notify('Sélectionnez au moins un type d’indexation.'); break; }
+        advanceTo(2); break;
+      case 'select-all-types':
+        getTypes().forEach(t=>state.selectedTypes[t]=true); initIndexations(); saveState(); render(); break;
+      case 'deselect-all-types':
+        getTypes().forEach(t=>state.selectedTypes[t]=false); initIndexations(); saveState(); render(); break;
       case 'back': goToStep(Math.max(1,state.step-1)); break;
       case 'save': saveState(true); break;
       case 'review': if (validateResults()) advanceTo(3); break;
@@ -416,6 +569,10 @@
   document.addEventListener('change', event => {
     const meta = event.target.dataset.meta;
     if (meta) setMeta(meta,event.target.value);
+    if (event.target.dataset.typeToggle) {
+      state.selectedTypes[event.target.dataset.typeToggle]=event.target.checked;
+      initIndexations(); state.validated=false; saveState(); render();
+    }
   });
   document.addEventListener('input', event => {
     const target = event.target;
@@ -424,24 +581,23 @@
       const type=target.dataset.termType;
       const idx=Number(target.dataset.termIndex);
       state.indexations[type].terms[idx]=target.value;
-      state.activeType=type; state.validated=false;
-      refreshRecommendations(); renderDropdown(target);
+      state.validated=false;
+      selectActiveType(type); renderDropdown(target);
     }
     if (target.dataset.freeType) {
       state.indexations[target.dataset.freeType].text=target.value;
-      state.activeType=target.dataset.freeType; state.validated=false;
-      refreshRecommendations();
+      state.validated=false;
+      selectActiveType(target.dataset.freeType);
     }
   });
   document.addEventListener('focusin', event => {
     const target=event.target;
     if (target.dataset.termType) {
-      state.activeType=target.dataset.termType;
       focusedType=target.dataset.termType;
       focusedIndex=Number(target.dataset.termIndex);
-      refreshRecommendations();renderDropdown(target);
+      selectActiveType(target.dataset.termType);renderDropdown(target);
     }
-    if (target.dataset.freeType) { state.activeType=target.dataset.freeType;refreshRecommendations(); }
+    if (target.dataset.freeType) selectActiveType(target.dataset.freeType);
   });
   document.addEventListener('keydown', event => {
     const input=event.target;
@@ -478,7 +634,7 @@
   });
   // La référence est mise à jour lorsqu'on quitte le champ, sans perturber la frappe.
   document.addEventListener('focusout', event => {
-    if (event.target.dataset.meta==='reference') { state.reference=event.target.value; renderChrome(); }
+    if (event.target.dataset.meta==='reference') { state.reference=event.target.value; }
   });
   render();
 })();
