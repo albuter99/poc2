@@ -158,12 +158,15 @@
     activeType: '', selectedTypes: {}, recommendationSeed: 0, indexations: {}, lastSaved: null
   });
   let state = emptyState();
+  // Un fichier choisi ne peut pas être restauré réellement après un rechargement.
+  // Nous ne rouvrons donc que les brouillons explicitement enregistrés,
+  // jamais un simple document joint pendant une démonstration précédente.
   try {
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-    if (stored && typeof stored === 'object') {
-      state = {...emptyState(), ...stored};
-      state.step = Math.min(3, Math.max(1, Number(state.step) || 1));
-      state.maxStep = Math.min(3, Math.max(1, Number(state.maxStep) || 1));
+    if (stored && typeof stored === 'object' && ['draft', 'review'].includes(stored.status)) {
+      state = {...emptyState(), ...stored, step:1, maxStep:3};
+    } else {
+      localStorage.removeItem(STORAGE_KEY);
     }
   } catch (_) { /* Le stockage local reste facultatif. */ }
   // Au chargement, la date du jour prend le pas sur la date d'une ancienne session.
@@ -195,6 +198,19 @@
     if (!getSelectedTypes().includes(state.activeType)) state.activeType = getSelectedTypes()[0] || '';
   }
   initIndexations();
+
+  // Remet toutes les données liées au document à zéro : fichier, métadonnées,
+  // indexations, recommandations et état mémorisé. Le champ de sélection
+  // natif est vidé pour pouvoir joindre de nouveau le même PDF.
+  function resetDocument() {
+    state = emptyState();
+    initIndexations();
+    fileInput.value = '';
+    confirmationDialog.hidden = true;
+    try { localStorage.removeItem(STORAGE_KEY); } catch (_) { /* Stockage facultatif. */ }
+    render();
+    window.scrollTo({top:0, behavior:'auto'});
+  }
 
   function saveState(showMessage = false) {
     state.lastSaved = new Date().toISOString();
@@ -239,7 +255,13 @@
   }
   confirmationOk.addEventListener('click', () => {
     confirmationDialog.hidden = true;
-    goToStep(1);
+    if (confirmationDialog.dataset.kind === 'validated') {
+      resetDocument();
+      notify('Indexation validée. Vous pouvez joindre un nouveau document.');
+    } else {
+      // Un brouillon non validé reste accessible pour être complété.
+      goToStep(1);
+    }
   });
   function goToStep(step) {
     if (step < 1 || step > 3) return;
@@ -596,8 +618,8 @@
     const value = target.dataset.value;
     switch (action) {
       case 'attach-file': fileInput.click(); break;
-      case 'remove-file': state.fileName=''; markEdited(); fileInput.value=''; render(); break;
-      case 'reset': state = emptyState(); initIndexations(); try { localStorage.removeItem(STORAGE_KEY); } catch (_) {} fileInput.value=''; render(); notify('Démonstration réinitialisée.'); break;
+      case 'remove-file': resetDocument(); notify('Document retiré et formulaire remis à zéro.'); break;
+      case 'reset': resetDocument(); notify('Nouveau formulaire vierge.'); break;
       case 'continue':
         if (!getSelectedTypes().length) { notify('Sélectionnez au moins un type d’indexation.'); break; }
         advanceTo(2); break;
