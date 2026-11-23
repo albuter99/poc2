@@ -11,3 +11,36 @@
 .term-chip.input-empty{width:94px;min-width:84px}
 @media(max-width:1199px){.term-chip{width:86px;max-width:86px;min-width:86px}.term-chip.input-empty{width:70px;max-width:70px;min-width:70px}.chip-list{gap:5px 3px}.term-wrap{gap:3px}.term-chip textarea{font-size:10px}}
 @media(max-width:1100px){.view{padding:12px 14px}.page-head{margin-bottom:10px}.file-row{min-height:35px}.form-grid{gap:5px 10px}.form-grid input,.form-grid select{height:28px}.card-body{padding:8px}.type-item{padding:10px 12px}}
+
+/* Version 2 : navigation cliquable, choix des indexations et champ actif. */
+.breadcrumbs{gap:6px}
+.crumb-link{border:0;background:transparent;padding:3px 4px;font-size:inherit;color:#5c7892;border-radius:3px}
+.crumb-link:hover,.crumb-link:focus-visible{color:#155d94;background:#e8f1f9;text-decoration:underline}
+.crumb-link.crumb-current{font-weight:700;color:#1b4e7a}
+.type-bulk-actions{display:flex;gap:9px;align-items:center;padding:6px 12px;border-bottom:1px solid #e6edf4;font-size:10px}
+.type-bulk-actions button{border:0;background:transparent;color:#1b6399;text-decoration:underline;padding:4px 0;font-size:10px}
+.type-bulk-actions button:hover{color:#0f3f6c}
+.selectable-type{cursor:pointer;user-select:none}
+.selectable-type input[type="checkbox"]{height:17px;width:17px;min-width:17px;accent-color:#16834d;cursor:pointer;margin:0}
+.selectable-type:has(input:not(:checked)){color:#8093a6;font-weight:400}
+.selectable-type:hover{background:#f3f8fc}
+.empty-indexations{padding:22px 16px;border:1px dashed #a8bbca;border-radius:4px;background:#f9fbfd;color:#56718b}
+.type-editor{border:2px solid transparent;transition:border-color .12s ease, box-shadow .12s ease}
+.type-editor-active{border-color:#2579bb;box-shadow:0 0 0 3px #2b82bf1c}
+.type-editor-active>.card-head{background:#dfeffc;color:#134d7a}
+.editing-badge{font-size:9px;font-weight:700;color:#fff;background:#2376b2;border-radius:30px;padding:3px 7px;margin-left:8px;white-space:nowrap}
+.recommendation-type{font-weight:400;color:#63829d}
+.suggest-context{font-size:10px;background:#edf5fc;border-left:3px solid #2376b2;padding:6px 7px;margin:0 0 8px;color:#275677}
+.edit-main .type-editor .chip-list{align-items:stretch;gap:9px 8px}
+.edit-main .type-editor .term-wrap{align-items:flex-start;max-width:100%;gap:5px}
+.edit-main .type-editor .term-divider{padding-top:20px}
+.edit-main .type-editor .term-chip{width:168px;max-width:min(320px,100%);min-width:150px;min-height:60px;height:auto;align-items:flex-start;padding:4px 4px 4px 7px;flex-shrink:1}
+.edit-main .type-editor .term-chip.input-empty{width:160px;min-width:150px;max-width:min(320px,100%);border:1px solid #93b9d8}
+.edit-main .type-editor .term-chip:focus-within{border:2px solid #2678b9;background:#fcfeff;box-shadow:0 0 0 2px #2b82bf17}
+.edit-main .type-editor .term-chip textarea{font-size:11px;line-height:1.35;height:auto;min-height:50px;max-height:none;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal;resize:none;flex:1}
+.edit-main .type-editor .remove-term{padding:1px 3px;position:relative;top:2px}
+.dropdown{min-width:235px;max-width:min(330px,80vw);max-height:265px;overflow-y:auto;white-space:normal}
+.dropdown button{font-size:11px;line-height:1.3}
+.edit-right .suggest-body{max-height:min(72vh,710px);overflow:auto}
+@media(max-width:1199px){.edit-main .type-editor .term-chip{width:158px;min-width:145px;max-width:300px}.edit-main .type-editor .term-chip.input-empty{width:150px;min-width:145px}}
+@media(max-width:520px){.crumb-link{font-size:9px}.breadcrumbs{gap:2px;padding:0 7px}.edit-main .type-editor .term-chip{min-width:135px;max-width:250px}}
