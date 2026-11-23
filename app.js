@@ -145,9 +145,16 @@
     'Mots-clés': ['Renvoi préjudiciel', 'Interprétation'],
     'Cotes bulletin': ['Procédure', 'Recevabilité']
   };
+  // La date du formulaire est celle du navigateur au moment de l'ouverture de la page.
+  // Les composants locaux évitent le décalage d'un jour provoqué par toISOString() dans certains fuseaux horaires.
+  function todayLocalISO() {
+    const now = new Date();
+    const pad = value => String(value).padStart(2, '0');
+    return `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  }
   const emptyState = () => ({
-    step: 1, maxStep: 3, validated: false, fileName: '', jurisdiction: '',
-    procedure: '', documentType: '', date: '', reference: '', lang: '',
+    step: 1, maxStep: 3, validated: false, status: '', fileName: '', jurisdiction: '',
+    procedure: '', documentType: '', date: todayLocalISO(), reference: '', lang: '',
     activeType: '', selectedTypes: {}, recommendationSeed: 0, indexations: {}, lastSaved: null
   });
   let state = emptyState();
@@ -159,10 +166,14 @@
       state.maxStep = Math.min(3, Math.max(1, Number(state.maxStep) || 1));
     }
   } catch (_) { /* Le stockage local reste facultatif. */ }
+  // Au chargement, la date du jour prend le pas sur la date d'une ancienne session.
+  state.date = todayLocalISO();
 
   const view = $('#view');
   const footerActions = $('#footerActions');
   const fileInput = $('#fileInput');
+  const confirmationDialog = $('#confirmationDialog');
+  const confirmationOk = $('#confirmationOk');
   let toastTimeout = null;
   let focusedType = null;
   let focusedIndex = null;
@@ -198,6 +209,38 @@
     toast.classList.add('visible');
     toastTimeout = setTimeout(() => toast.classList.remove('visible'), 3600);
   }
+  // Enregistrer et Valider ont des conséquences différentes. Le bouton OK
+  // confirme la lecture du message, puis ramène à la première page.
+  function showResultDialog(kind) {
+    const hasNewTerms = hasAiProposals();
+    if (kind === 'save') {
+      state.validated = false;
+      state.status = 'draft';
+      saveState();
+      $('#confirmationTitle').textContent = 'Brouillon enregistré';
+      $('#confirmationMessage').textContent = "L’indexation a été enregistrée comme brouillon dans ce navigateur. Elle reste en attente de validation et n’est pas active. Aucun enregistrement n’a été envoyé au MDM.";
+      confirmationDialog.dataset.kind = 'draft';
+    } else {
+      if (!validateResults()) {
+        if (state.step === 3) goToStep(2);
+        return;
+      }
+      state.validated = !hasNewTerms;
+      state.status = hasNewTerms ? 'review' : 'validated';
+      saveState();
+      $('#confirmationTitle').textContent = hasNewTerms ? 'Proposition soumise à validation' : 'Indexation validée';
+      $('#confirmationMessage').textContent = hasNewTerms
+        ? "La demande de validation a été enregistrée dans cette démonstration. Les termes marqués * nécessitent une validation métier supplémentaire : l’indexation n’est pas encore active. Aucun transfert au MDM n’a été réalisé."
+        : "L’indexation a été validée dans cette démonstration. Vous allez revenir à la page Document. Aucune donnée n’a été envoyée au MDM.";
+      confirmationDialog.dataset.kind = hasNewTerms ? 'review' : 'validated';
+    }
+    confirmationDialog.hidden = false;
+    confirmationOk.focus();
+  }
+  confirmationOk.addEventListener('click', () => {
+    confirmationDialog.hidden = true;
+    goToStep(1);
+  });
   function goToStep(step) {
     if (step < 1 || step > 3) return;
     state.step = step;
@@ -227,7 +270,8 @@
       {title:'Indexation', step:2},
       {title:'Révision finale', step:3}
     ];
-    $('#breadcrumbs').innerHTML = crumbs.map((crumb, index) =>
+    // Fil progressif : 2 éléments à l'étape 1, 3 à l'étape 2, 4 à l'étape 3.
+    $('#breadcrumbs').innerHTML = crumbs.slice(0, state.step + 1).map((crumb, index) =>
       `${index ? '<span class="crumb-sep" aria-hidden="true">›</span>' : ''}`+
       `<button type="button" class="crumb-link ${!crumb.root && state.step===crumb.step ? 'crumb-current' : ''}" data-nav-step="${crumb.step}" ${!crumb.root && state.step===crumb.step ? 'aria-current="step"' : ''}>${crumb.title}</button>`
     ).join('');
@@ -251,8 +295,18 @@
     return `<option value="" ${!selected ? 'selected' : ''}>Sélectionner…</option>` + optionsHtml(values, selected);
   }
   function renderStep1() {
+    const statusMessage = state.status === 'modified'
+      ? '<div class="result-status draft-status" role="status"><strong>Modifications non validées.</strong> Enregistrez de nouveau ce travail ou validez-le avant toute utilisation.</div>'
+      : state.status === 'draft'
+      ? '<div class="result-status draft-status" role="status"><strong>Brouillon enregistré.</strong> Cette indexation est en attente de validation et n’est pas active.</div>'
+      : state.status === 'review'
+        ? '<div class="result-status review-status" role="status"><strong>Validation métier nécessaire.</strong> Les nouveaux termes (*) doivent être approuvés avant activation.</div>'
+        : state.status === 'validated'
+          ? '<div class="result-status validated-status" role="status"><strong>Indexation validée dans la démonstration.</strong> Aucun enregistrement sur le serveur MDM.</div>'
+          : '';
     view.innerHTML = `
       <div class="page-head"><h1>Nouveau document</h1><p>Joindre un fichier et vérifier les données du document.</p></div>
+      ${statusMessage}
       <div class="intro-grid">
         <div class="intro-left">
           <section class="card"><div class="card-head">Document</div><div class="card-body">
@@ -320,13 +374,17 @@
     const d = state.indexations[type];
     const known = d.format === 'terms' ? d.terms.map(x=>x.trim()).filter(Boolean) : [];
     const last = known[known.length-1] || '';
-    const matches = NEXT_AFTER[last] || [];
-    const catalog = currentCatalog(type);
     const shift = hashText(`${type}|${state.reference}|${state.procedure}|${state.recommendationSeed}|${known.join('>')}`);
-    const others = rotate(termPool(type).filter(x=>!known.includes(x)), shift);
-    if (d.format === 'text') return rotate(catalog.next, known.length + shift).slice(0,7);
-    return unique([...matches.filter(x=>!known.includes(x)),...others]).slice(0,9);
+    const pool = termPool(type).filter(x => !known.includes(x));
+    if (d.format === 'text') return rotate(unique(currentCatalog(type).next),shift).slice(0,3);
+    const contextual = (NEXT_AFTER[last] || []).filter(x => !known.includes(x) && !x.endsWith('*'));
+    const standard = unique([...contextual, ...rotate(pool.filter(x => !x.endsWith('*')),shift)]);
+    const novel = rotate(pool.filter(x => x.endsWith('*')),shift);
+    // Deux termes déjà disponibles et une proposition éventuelle de l'IA.
+    // Le contenu varie selon le document, le champ et la position de la chaîne.
+    return unique([...standard.slice(0,2), ...novel.slice(0,1), ...standard.slice(2)]).slice(0,3);
   }
+
   function getChainProposals(type) {
     const catalog = currentCatalog(type);
     if (FREE_TEXT_TYPES.has(type)) return rotate(catalog.texts,hashText(state.reference + state.recommendationSeed));
@@ -357,7 +415,7 @@
     return `<div class="suggest-body"><div class="suggest-context">Champ actif : <strong>${escapeHtml(type)}</strong></div><h3>${isText ? 'Textes complets' : 'Chaînes complètes'}</h3>
       ${proposals.slice(0,4).map(text=>`<button class="suggestion" type="button" data-action="apply-full" data-type="${escapeHtml(type)}" data-value="${escapeHtml(text)}">${escapeHtml(text)}</button>`).join('')}
       <div class="suggest-sep"></div><h3>${isText ? 'Suite du texte' : 'Terme suivant'}</h3>
-      ${getNextOptions(type).slice(0,7).map(text=>`<button type="button" class="suggestion ${text.endsWith('*') ? 'ai-suggestion' : ''}" data-action="apply-next" data-type="${escapeHtml(type)}" data-value="${escapeHtml(text)}">${escapeHtml(text)}</button>`).join('')}
+      ${getNextOptions(type).slice(0,3).map(text=>`<button type="button" class="suggestion ${text.endsWith('*') ? 'ai-suggestion' : ''}" data-action="apply-next" data-type="${escapeHtml(type)}" data-value="${escapeHtml(text)}">${escapeHtml(text)}</button>`).join('')}
       <p class="muted-hint">* Proposition nouvelle de l'IA, à faire valider.</p>
       <p class="muted-hint">Suggestions simulées, variables selon le champ et les termes sélectionnés.</p></div>`;
   }
@@ -420,8 +478,11 @@
     $$('.dropdown').forEach(drop => { if (drop !== $('.dropdown', wrap)) drop.hidden = true; });
     const dropdown = $('.dropdown', wrap);
     const term = normalized(input.value.trim());
-    const alternatives = unique([...getNextOptions(type),...termPool(type)]);
-    const results = alternatives.filter(text => !term || normalized(text).includes(term)).slice(0, 7);
+    const candidates = getNextOptions(type);
+    const alternatives = term
+      ? unique([...candidates, ...termPool(type)])
+      : candidates;
+    const results = alternatives.filter(text => !term || normalized(text).includes(term)).slice(0, 3);
     dropdown.innerHTML = results.map(text => `<button type="button" class="${text.endsWith('*') ? 'ai-option' : ''}" data-action="insert-term" data-type="${escapeHtml(type)}" data-index="${escapeHtml(input.dataset.termIndex)}" data-value="${escapeHtml(text)}">${escapeHtml(text)}</button>`).join('');
     dropdown.hidden = results.length === 0;
     sizeTermInput(input);
@@ -449,6 +510,10 @@
     if(heading) heading.innerHTML=`Recommandations <span class="recommendation-type">(${escapeHtml(type)})</span>`;
     refreshRecommendations();
   }
+  function markEdited() {
+    state.validated = false;
+    if (state.status) state.status = 'modified';
+  }
   function setFocus(type, index) {
     const el = $$('[data-term-type]').find(node => node.dataset.termType === type && Number(node.dataset.termIndex) === index);
     if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
@@ -460,7 +525,7 @@
     if (!clean) return;
     d.terms[index] = clean;
     state.activeType = type;
-    state.validated = false;
+    markEdited();
     renderStep2();
     setFocus(type, index + 1);
   }
@@ -469,6 +534,7 @@
     const d = state.indexations[type];
     if (d.format === 'text') {
       d.text = `${d.text.trim()}${d.text.trim() ? ' ' : ''}${term}`;
+      markEdited();
       renderStep2();
       const field = $(`[data-free-type="${CSS.escape(type)}"]`);
       if (field) field.focus();
@@ -481,7 +547,7 @@
     if (d.format === 'text') d.text = value;
     else d.terms = value.split(/\s-\s/).map(t=>t.trim()).filter(Boolean);
     state.activeType = type;
-    state.validated = false;
+    markEdited();
     renderStep2();
     notify('Proposition insérée. Vous pouvez la modifier.');
   }
@@ -497,21 +563,16 @@
       state.indexations = {};
       state.selectedTypes = {};
     }
-    state.validated = false;
+    markEdited();
     render();
-  }
-  function randomDate() {
-    const year = [2023,2024,2025,2026][Math.floor(Math.random() * 4)];
-    const month = String(1+Math.floor(Math.random()*12)).padStart(2,'0');
-    const day = String(1+Math.floor(Math.random()*28)).padStart(2,'0');
-    return `${year}-${month}-${day}`;
   }
   function attachFile(file) {
     if (!file) return;
     const sample = SAMPLES[Math.floor(Math.random()*SAMPLES.length)];
     Object.assign(state, sample);
-    state.date = randomDate();
+    state.date = todayLocalISO();
     state.fileName = file.name;
+    state.status = '';
     state.indexations = {};
     state.selectedTypes = {};
     state.recommendationSeed = Math.floor(Math.random()*1000000);
@@ -535,31 +596,28 @@
     const value = target.dataset.value;
     switch (action) {
       case 'attach-file': fileInput.click(); break;
-      case 'remove-file': state.fileName=''; fileInput.value=''; render(); break;
+      case 'remove-file': state.fileName=''; markEdited(); fileInput.value=''; render(); break;
       case 'reset': state = emptyState(); initIndexations(); try { localStorage.removeItem(STORAGE_KEY); } catch (_) {} fileInput.value=''; render(); notify('Démonstration réinitialisée.'); break;
       case 'continue':
         if (!getSelectedTypes().length) { notify('Sélectionnez au moins un type d’indexation.'); break; }
         advanceTo(2); break;
       case 'select-all-types':
-        getTypes().forEach(t=>state.selectedTypes[t]=true); initIndexations(); saveState(); render(); break;
+        getTypes().forEach(t=>state.selectedTypes[t]=true); markEdited(); initIndexations(); saveState(); render(); break;
       case 'deselect-all-types':
-        getTypes().forEach(t=>state.selectedTypes[t]=false); initIndexations(); saveState(); render(); break;
+        getTypes().forEach(t=>state.selectedTypes[t]=false); markEdited(); initIndexations(); saveState(); render(); break;
       case 'back': goToStep(Math.max(1,state.step-1)); break;
-      case 'save': saveState(true); break;
+      case 'save': showResultDialog('save'); break;
       case 'review': if (validateResults()) advanceTo(3); break;
-      case 'validate':
-        if (!validateResults()) { goToStep(2); break; }
-        if (hasAiProposals()) notify('Propositions * conservées : validation métier nécessaire.');
-        state.validated=true; saveState(); render(); notify('Indexation validée pour la démonstration.'); break;
+      case 'validate': showResultDialog('validate'); break;
       case 'remove-term': {
         const d=state.indexations[type]; if (!d || d.format !== 'terms') break;
         d.terms.splice(Number(target.dataset.index),1);
-        state.activeType=type; state.validated=false; renderStep2(); break;
+        state.activeType=type; markEdited(); renderStep2(); break;
       }
       case 'clear-type':
         if (state.indexations[type].format==='terms') state.indexations[type].terms=[];
         else state.indexations[type].text='';
-        state.activeType=type; state.validated=false; renderStep2(); break;
+        state.activeType=type; markEdited(); renderStep2(); break;
       case 'insert-term': insertTerm(type, Number(target.dataset.index), value); break;
       case 'apply-next': acceptNext(type,value); break;
       case 'apply-full': applyFull(type,value); break;
@@ -571,22 +629,22 @@
     if (meta) setMeta(meta,event.target.value);
     if (event.target.dataset.typeToggle) {
       state.selectedTypes[event.target.dataset.typeToggle]=event.target.checked;
-      initIndexations(); state.validated=false; saveState(); render();
+      initIndexations(); markEdited(); saveState(); render();
     }
   });
   document.addEventListener('input', event => {
     const target = event.target;
-    if (target.matches('input[data-meta="reference"]')) { state.reference=target.value; return; }
+    if (target.matches('input[data-meta="reference"]')) { state.reference=target.value; markEdited(); return; }
     if (target.dataset.termType) {
       const type=target.dataset.termType;
       const idx=Number(target.dataset.termIndex);
       state.indexations[type].terms[idx]=target.value;
-      state.validated=false;
+      markEdited();
       selectActiveType(type); renderDropdown(target);
     }
     if (target.dataset.freeType) {
       state.indexations[target.dataset.freeType].text=target.value;
-      state.validated=false;
+      markEdited();
       selectActiveType(target.dataset.freeType);
     }
   });
@@ -626,7 +684,7 @@
         }
       }
     }
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase()==='s') { event.preventDefault();saveState(true); }
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase()==='s') { event.preventDefault(); showResultDialog('save'); }
   });
   document.addEventListener('dragover', event => { if (event.target.closest('#fileDropZone')) event.preventDefault(); });
   document.addEventListener('drop', event => {
