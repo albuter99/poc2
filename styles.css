@@ -44,3 +44,7 @@
 .edit-right .suggest-body{max-height:min(72vh,710px);overflow:auto}
 @media(max-width:1199px){.edit-main .type-editor .term-chip{width:158px;min-width:145px;max-width:300px}.edit-main .type-editor .term-chip.input-empty{width:150px;min-width:145px}}
 @media(max-width:520px){.crumb-link{font-size:9px}.breadcrumbs{gap:2px;padding:0 7px}.edit-main .type-editor .term-chip{min-width:135px;max-width:250px}}
+
+/* Les suggestions s'ouvrent dans le flux de la carte active, sans masquer le champ suivant. */
+.type-editor .term-wrap:has(.dropdown:not([hidden])){flex-basis:100%;flex-wrap:wrap;align-items:flex-start}
+.type-editor .term-wrap .dropdown:not([hidden]){position:static;flex:0 1 310px;min-width:min(230px,100%);max-width:min(320px,100%);margin:4px 0 0 16px;box-shadow:0 3px 10px #152c4219}
