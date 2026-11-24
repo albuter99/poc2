@@ -245,8 +245,9 @@
   }
   function renderEditorPage(){
     view.innerHTML=`<div class="page-head"><h1>Indexation</h1><p>Construisez le résultat terme par terme, ou choisissez une suggestion.</p></div>
-    <div class="edit-grid"><aside class="edit-left">${summaryCards()}</aside><div class="edit-main">${renderMiddle()}</div>
+    <div class="edit-grid suggestions-below"><aside class="edit-left">${summaryCards()}</aside><div class="edit-main">${renderMiddle()}</div>
     <aside class="edit-right"><section class="card"><div class="card-head">Suggestions</div><div id="recommendationsContent">${renderSuggestions()}</div></section></aside></div>`;
+    positionSuggestionColumns();
     footerSet(actionButton('Précédent','previous'),actionButton('Sauvegarder (brouillon)','save-draft'),actionButton('Suivant','next-review',true));
     resizeTerms();
   }
@@ -267,7 +268,35 @@
       </div><p class="review-info">Vérifications simulées. Aucune comparaison réelle avec le référentiel MDM.</p></section></div>`;
     footerSet(actionButton('Précédent','previous'),actionButton('Sauvegarder','final-save',true),'');
   }
-  function refreshSuggestions(){const e=$('#recommendationsContent');if(e)e.innerHTML=renderSuggestions();}
+  // Présentation uniquement : les trois familles de suggestions sous la chaîne.
+  // Les boutons gardent exactement les actions déjà utilisées par la PoC.
+  function positionSuggestionColumns(){
+    const body=$('#recommendationsContent .suggest-body');
+    if(!body)return;
+    const nodes=[...body.children];
+    const context=nodes.find(node=>node.classList.contains('suggest-context'));
+    const names=['Terme','Chaîne de référence',"Chaîne d'indexation"];
+    const groups=names.map(name=>{
+      const section=document.createElement('section');
+      section.className='suggestion-column';
+      section.setAttribute('aria-label',name);
+      return section;
+    });
+    let current=-1;
+    for(const node of nodes){
+      if(node===context||node.classList.contains('suggest-sep'))continue;
+      if(node.tagName==='H3')current+=1;
+      if(current>=0&&current<groups.length)groups[current].appendChild(node);
+    }
+    const grid=document.createElement('div');
+    grid.className='suggestion-columns';
+    groups.forEach(group=>grid.appendChild(group));
+    body.replaceChildren();
+    body.classList.add('suggestions-horizontal');
+    if(context)body.appendChild(context);
+    body.appendChild(grid);
+  }
+  function refreshSuggestions(){const e=$('#recommendationsContent');if(e){e.innerHTML=renderSuggestions();positionSuggestionColumns();}}
   function sizeTerm(input){if(!input)return;const chip=input.closest('.term-chip');if(!chip)return;const lines=String(input.value||'').split('\n');const n=Math.max(...lines.map(x=>x.length),11);chip.style.width=Math.min(355,Math.max(150,100+n*5.2))+'px';input.style.height='auto';input.style.height=Math.max(48,input.scrollHeight+4)+'px';}
   function resizeTerms(){$$('textarea[data-term-line]').forEach(sizeTerm);}
   function focusTerm(line,index){const input=$(`[data-term-line="${line}"][data-term-index="${index}"]`);if(input){input.focus();input.setSelectionRange(input.value.length,input.value.length);}}
