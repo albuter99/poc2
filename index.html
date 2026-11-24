@@ -4,36 +4,40 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#1c3f63">
-  <meta name="description" content="MDM : démonstration interactive de l'assistant d'indexation documentaire.">
-  <title>MDM | Assistant d'indexation</title>
+  <meta name="description" content="MDM : démonstration interactive du travail d'indexation documentaire.">
+  <title>MDM | Travail d'indexation</title>
   <link rel="stylesheet" href="./styles.css?v=4">
-  <script src="./app.js?v=5" defer></script>
+  <link rel="stylesheet" href="./enhancements.css?v=6">
+  <script src="./app-v4.js?v=6" defer></script>
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
       <div class="brand" aria-label="MDM">MDM</div>
-      <nav class="topnav" aria-label="Navigation principale, autres modules indisponibles">
-        <span class="navitem locked" aria-disabled="true" title="Indisponible dans cette démonstration">Accueil</span>
-        <span class="navitem locked" aria-disabled="true" title="Indisponible dans cette démonstration">Dossiers</span>
-        <span class="navitem current" aria-current="page">Indexation</span>
-        <span class="navitem locked" aria-disabled="true" title="Indisponible dans cette démonstration">Recherche</span>
-        <span class="navitem locked" aria-disabled="true" title="Indisponible dans cette démonstration">Statistiques</span>
+      <nav class="topnav" aria-label="Navigation principale">
+        <span class="navitem locked" aria-disabled="true">Accueil</span>
+        <span class="navitem locked" aria-disabled="true">Dossiers</span>
+        <button type="button" class="navitem current current-button" data-action="home" aria-current="page">Travail d'indexation</button>
+        <span class="navitem locked" aria-disabled="true">Recherche</span>
+        <span class="navitem locked" aria-disabled="true">Statistiques</span>
       </nav>
-      <div class="useritem" aria-disabled="true">Utilisateur <span class="user-square" aria-hidden="true">□</span></div>
+      <div class="useritem" aria-disabled="true">Utilisateur</div>
     </header>
     <div class="breadcrumbs" id="breadcrumbs" aria-label="Fil d'Ariane"></div>
     <div class="workspace">
-      <aside class="sidebar" aria-label="Étapes de l'indexation">
-        <div class="sidebar-title">INDEXATION</div>
-        <button class="step active" data-step="1" type="button"><span class="step-circle">1</span> Document</button>
-        <button class="step" data-step="2" type="button"><span class="step-circle">2</span> Indexation</button>
-        <button class="step" data-step="3" type="button"><span class="step-circle">3</span> Révision finale</button>
+      <aside class="sidebar" aria-label="Navigation du travail d'indexation">
+        <div class="sidebar-title">TRAVAIL D'INDEXATION</div>
+        <button class="step menu-choice" data-action="new-work" type="button">Nouvelle indexation</button>
+        <button class="step menu-choice disabled" type="button" disabled title="Fonction à venir">Modifier une indexation</button>
+        <div class="sidebar-divider">ÉTAPES</div>
+        <button class="step numbered-step" data-step="1" type="button"><span class="step-circle">1</span> Travail d'indexation</button>
+        <button class="step numbered-step" data-step="2" type="button"><span class="step-circle">2</span> Indexation</button>
+        <button class="step numbered-step" data-step="3" type="button"><span class="step-circle">3</span> Révision</button>
       </aside>
       <main id="view" class="view" tabindex="-1"></main>
     </div>
     <footer class="footer">
-      <span>MDM · Maquette interactive, données et recommandations simulées</span>
+      <span>MDM · Démonstration interactive, métadonnées et suggestions fictives</span>
       <div class="footer-actions" id="footerActions"></div>
     </footer>
   </div>
