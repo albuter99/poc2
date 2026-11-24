@@ -1,0 +1,49 @@
+/* Extension fonctionnelle : mêmes couleurs, typographies et composants que la PoC existante. */
+.current-button{border:0;cursor:pointer}.current-button:hover{background:#356991}
+.sidebar-divider{margin:15px 5px 8px;padding:8px 5px 4px;border-top:1px solid #d5e1eb;color:#73899e;font-size:10px;font-weight:700}
+.menu-choice{font-size:11px;min-height:35px;height:auto;padding-top:6px;padding-bottom:6px;line-height:1.25}
+.menu-choice.active{background:#dceaf7;color:#18598c;font-weight:700}
+.numbered-step{height:auto;min-height:36px;line-height:1.2;padding-top:7px;padding-bottom:7px}
+.home-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;max-width:880px;margin-top:16px}
+.home-tile{text-align:left;min-height:142px;padding:18px 20px;background:white;border:1px solid var(--line);border-radius:5px;color:#1e4364;display:flex;flex-direction:column;gap:12px;justify-content:center}
+.home-tile:not(:disabled):hover{border-color:#2878b6;background:#f7fbff;box-shadow:0 2px 9px #14345013}
+.home-tile strong{font-size:16px}.home-tile p{font-size:12px;color:#7890a6;margin:0;line-height:1.45}
+.home-tile:disabled{opacity:.53}.home-illustration{font-size:24px;color:#2b6897}
+.work-layout{display:grid;grid-template-columns:minmax(340px,1.1fr) minmax(300px,.95fr);gap:10px;align-items:start}
+.work-column{display:flex;flex-direction:column;gap:10px}
+.work-layout .form-grid{grid-template-columns:minmax(160px,.75fr) minmax(165px,1fr)}
+.work-layout .form-grid label{line-height:1.35}
+.work-layout select:disabled{background:#f2f5f8;color:#4f6982}
+.required{color:#ae394c;font-weight:700}
+.case-help{margin:8px 0 0;font-size:10px;color:#7b90a5;line-height:1.5}
+.form-grid input[readonly]{background:#f5f8fb;color:#526d85;cursor:default}
+.work-file-card{margin-top:10px}
+.work-note{margin:0 0 11px;color:#697f94;font-size:11px}
+.footer-actions.spaced{flex:1;justify-content:space-between}
+.footer-actions .right-actions{display:flex;gap:7px}
+.edit-left .card{overflow:hidden}.edit-left .facts{grid-template-columns:minmax(64px,.9fr) minmax(80px,1.1fr);gap:6px}
+.edit-left .facts dt,.edit-left .facts dd{font-size:10px}
+.type-editor-head{gap:9px}.editor-line{border-bottom:1px solid #e6edf4;padding-bottom:12px;margin-bottom:11px}.editor-line:last-child{border-bottom:0;margin-bottom:0}
+.editor-line-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px;color:#476985;font-size:11px}
+.line-actions{display:flex;gap:5px}.line-actions button,.line-add{font-size:10px;padding:4px 8px;background:#fff;border:1px solid #b6cadb;border-radius:3px;color:#245c8a}
+.line-add{margin-top:8px}.line-add:hover,.line-actions button:hover{background:#ecf5fd}
+.drag-handle{color:#7b94a9;cursor:grab;touch-action:none;border:0;background:transparent;font-size:14px;align-self:center;padding:3px 2px}
+.drag-handle:active{cursor:grabbing}.term-wrap.drop-target .term-chip{border:2px dashed #176baa;box-shadow:0 0 0 3px #6bafd94a}
+.term-wrap{overflow:visible}.term-wrap .term-chip{max-width:min(365px,100%)}
+.type-editor .term-wrap .term-chip textarea{min-height:43px;overflow:hidden;resize:none}
+.term-wrap .mini-move{border:0;background:transparent;font-size:12px;color:#7893a8;align-self:center;padding:2px;cursor:pointer}
+.term-wrap .mini-move:hover{color:#195c92}
+.line-number{font-weight:700}
+.editor-hint{line-height:1.45}
+.suggest-panel-title{font-size:11px;font-weight:700;color:#1b5a8d;margin:8px 0 6px}
+.suggestion small{display:block;color:#7390aa;font-size:9px;margin-top:2px}
+.suggest-body .suggestion{font-size:10px}.suggest-body .muted-hint{margin-top:8px}
+.review-grid{grid-template-columns:minmax(385px,1.9fr) minmax(215px,.8fr)}
+.review-left .facts{grid-template-columns:minmax(120px,.7fr) minmax(100px,1.3fr);gap:6px}
+.review-left .facts dt,.review-left .facts dd{font-size:11px}
+.review-info{font-size:10px;color:#72889d;line-height:1.5;padding:6px 10px 10px}
+.result-line{margin-bottom:6px}.result-line:last-child{margin-bottom:0}
+.result-subhead{color:#6b8399;font-size:10px;margin:6px 0 3px;font-weight:700}
+.check-item .check-pill.neutral{background:#e9f1f9;color:#2b628e}
+@media(max-width:970px){.work-layout{grid-template-columns:1fr}.work-layout .form-grid{grid-template-columns:175px minmax(160px,1fr)}.review-grid{grid-template-columns:1fr}}
+@media(max-width:600px){.home-choice-grid{grid-template-columns:1fr}.work-layout .form-grid{grid-template-columns:1fr}.edit-grid{grid-template-columns:1fr}.footer-actions.spaced{width:100%}}
