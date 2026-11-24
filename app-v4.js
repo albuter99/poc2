@@ -257,15 +257,56 @@
   function newTerms(){if(isFreeText())return [];const known=new Set([...pool(),...AI_TERMS].filter(x=>!x.endsWith('*')).map(norm));return unique(state.indexation.lines.flat().map(x=>x.trim()).filter(x=>x&&!known.has(norm(x.replace(/\s*\*$/,'')))));}
   function renderReview(){
     const fresh=newTerms();const ai=hasAi();const lines=resultLines();
-    view.innerHTML=`<div class="page-head"><h1>Révision</h1><p>Vérifiez les informations et le résultat avant la sauvegarde.</p></div>
-      <div class="review-grid"><div class="review-left">${summaryCards()}
-      <section class="card"><div class="card-head">${esc(state.indexationType)} · Résultat</div><div class="result-list">
-      ${lines.length?lines.map((l,i)=>`<div class="result-line">${canMultipleLines()?`<div class="result-subhead">Ligne ${i+1}</div>`:''}<div class="result-value">${esc(l)}</div></div>`).join(''):'<p>Non renseigné</p>'}
-      <p class="validation-note">${canMultipleLines()?'Plusieurs lignes autorisées pour ce type.':'Un résultat pour ce travail d’indexation.'}</p></div></section></div>
-      <section class="card"><div class="card-head">Vérifications</div><div class="checks">
-        <div class="check-item"><span class="check-dot">${fresh.length?'!':'✓'}</span><span class="text"><strong>Nouveau terme (non existant auparavant)</strong><br><small>${fresh.length?esc(fresh.join(', ')):'Aucun terme nouveau détecté dans les données fictives'}</small></span><span class="check-pill ${fresh.length?'neutral':''}">${fresh.length?'À vérifier':'OK'}</span></div>
-        <div class="check-item"><span class="check-dot">${ai?'!':'✓'}</span><span class="text"><strong>Suggestion intelligente (*)</strong><br><small>${ai?'Suggestion IA présente dans le résultat':'Aucune suggestion IA retenue'}</small></span><span class="check-pill ${ai?'neutral':''}">${ai?'À vérifier':'OK'}</span></div>
-      </div><p class="review-info">Vérifications simulées. Aucune comparaison réelle avec le référentiel MDM.</p></section></div>`;
+    const caseRows=[
+      ['Juridiction',state.jurisdiction],['Affaire',state.affaire],['Année',state.year],
+      ['Ordre',state.order],['Archétype procédural',state.archetype],
+      ['Id Publié',state.publishedId],['Nom usuel',state.usual],
+      ...(hasMatter()?[['Matière',state.matter]]:[])
+    ];
+    const caseDetails=caseRows.map(([label,value])=>`<dt>${esc(label)}</dt><dd>${esc(value||'—')}</dd>`).join('');
+    view.innerHTML=`<div class="review-screen">
+      <div class="page-head review-heading"><h1>Révision</h1><p>Contrôlez le résultat avant la sauvegarde.</p></div>
+      <div class="review-summary-strip">
+        <section class="card review-summary-card">
+          <div class="card-head">Travail d'indexation</div>
+          <div class="review-summary-content"><div class="review-summary-value" title="${esc(state.indexationType)}">${esc(state.indexationType||'—')}</div>
+          <div class="review-summary-minor">${esc(state.workLanguage||'Français')}</div></div>
+        </section>
+        <section class="card review-summary-card">
+          <div class="card-head">Document</div>
+          <div class="review-summary-content"><div class="review-summary-value" title="${esc(state.fileName)}">${esc(state.fileName||'Aucun fichier')}</div>
+          <div class="review-summary-minor" title="${esc(state.documentType)}">${esc(state.documentType||'—')} · ${esc(state.documentLanguage||'—')}</div></div>
+        </section>
+        <section class="card review-summary-card review-case-card">
+          <div class="card-head">Affaire</div>
+          <div class="review-summary-content"><div class="review-summary-value">${esc(state.affaire||'—')} · ${esc(state.jurisdiction||'—')}</div>
+          <div class="review-summary-minor">${esc(state.usual||'—')}</div>
+          <details class="review-details"><summary>Voir les métadonnées</summary>
+            <div class="review-details-popover"><div class="review-details-heading">Métadonnées de l'affaire</div><dl class="facts">${caseDetails}</dl></div>
+          </details></div>
+        </section>
+      </div>
+      <div class="review-main-grid">
+        <section class="card review-result-card">
+          <div class="card-head review-main-heading"><span>Résultat d'indexation</span><span class="review-small-count">${lines.length} ${lines.length===1?'ligne':'lignes'}</span></div>
+          <div class="review-output-body">
+          ${lines.length?lines.map((line,i)=>`<div class="review-output-line">${canMultipleLines()?`<span class="review-line-number">${i+1}</span>`:''}<div class="review-line-text">${esc(line)}</div></div>`).join(''):'<p class="review-empty">Aucun résultat renseigné.</p>'}
+          </div>
+        </section>
+        <section class="card review-checks-card">
+          <div class="card-head">Vérifications</div>
+          <div class="review-checks-body">
+            <div class="review-check-row"><span class="check-dot ${fresh.length?'review-caution':''}">${fresh.length?'!':'✓'}</span>
+              <div class="review-check-copy"><strong>Nouveau terme</strong><small>${fresh.length?`${fresh.length} à vérifier`:'Aucun terme nouveau'}</small></div>
+              <span class="review-check-state ${fresh.length?'needs-review':''}">${fresh.length?'À vérifier':'OK'}</span></div>
+            <div class="review-check-row"><span class="check-dot ${ai?'review-caution':''}">${ai?'!':'✓'}</span>
+              <div class="review-check-copy"><strong>Suggestion intelligente (*)</strong><small>${ai?'Proposition IA détectée':'Aucune suggestion IA'}</small></div>
+              <span class="review-check-state ${ai?'needs-review':''}">${ai?'À vérifier':'OK'}</span></div>
+          </div>
+          <div class="review-check-footnote">Contrôles simulés dans cette PoC.</div>
+        </section>
+      </div>
+    </div>`;
     footerSet(actionButton('Précédent','previous'),actionButton('Sauvegarder','final-save',true),'');
   }
   // Présentation uniquement : les trois familles de suggestions sous la chaîne.
