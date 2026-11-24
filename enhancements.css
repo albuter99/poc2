@@ -80,3 +80,18 @@
   .suggestion-column{border-right:0;border-bottom:1px solid #d6e2eb}
   .suggestion-column:last-child{border-bottom:0}
 }
+
+/* Navigation : tous les boutons inférieurs sont regroupés à droite, sur chaque écran. */
+.footer-actions.spaced{
+  display:flex;
+  flex:1;
+  width:100%;
+  align-items:center;
+  justify-content:flex-end;
+  gap:7px;
+}
+.footer-actions.spaced .left-actions,
+.footer-actions.spaced .middle-actions,
+.footer-actions.spaced .right-actions{
+  display:contents;
+}
