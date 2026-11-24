@@ -152,8 +152,7 @@
       <div class="home-choice-grid">
         <button class="home-tile" data-action="new-work" type="button"><span class="home-illustration">＋</span><strong>Nouvelle indexation</strong><p>Créer un nouveau travail d'indexation et renseigner les métadonnées.</p></button>
         <button class="home-tile" type="button" disabled title="Non disponible dans la PoC"><span class="home-illustration">✎</span><strong>Modifier une indexation</strong><p>Fonctionnalité prévue, pas encore développée.</p></button>
-      </div>
-      <p class="case-help" style="margin-top:15px">Démonstration : aucun document n'est lu, aucun travail n'est envoyé au MDM.</p>`;
+      </div>`;
     footer.classList.remove('spaced');footer.innerHTML='';
   }
   const metaRow=(label,id,field,extra='')=>`<label for="${id}">${label}</label>${field}${extra}`;
