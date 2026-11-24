@@ -47,3 +47,9 @@
 .check-item .check-pill.neutral{background:#e9f1f9;color:#2b628e}
 @media(max-width:970px){.work-layout{grid-template-columns:1fr}.work-layout .form-grid{grid-template-columns:175px minmax(160px,1fr)}.review-grid{grid-template-columns:1fr}}
 @media(max-width:600px){.home-choice-grid{grid-template-columns:1fr}.work-layout .form-grid{grid-template-columns:1fr}.edit-grid{grid-template-columns:1fr}.footer-actions.spaced{width:100%}}
+
+/* Actions: Précédent à gauche, Sauvegarder au centre, Suivant à droite. */
+.footer-actions.spaced{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);align-items:center;flex:1;width:100%}
+.footer-actions .middle-actions{display:flex;justify-content:center}
+.footer-actions .right-actions{display:flex;justify-content:flex-end}
+.footer-actions .left-actions{display:flex;justify-content:flex-start}
