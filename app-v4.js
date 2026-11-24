@@ -340,7 +340,23 @@
     const line=Number(input.dataset.termLine), idx=Number(input.dataset.termIndex), typed=norm(input.value);
     let terms=nextTerms(line,idx);if(typed){terms=unique([...pool(),...AI_TERMS]).filter(x=>norm(x).includes(typed)).slice(0,3);}
     drop.innerHTML=terms.map(x=>`<button type="button" class="${x.endsWith('*')?'ai-option':''}" data-action="insert-term" data-line="${line}" data-index="${idx}" data-value="${esc(x)}">${esc(x)}</button>`).join('');
-    drop.hidden=!terms.length;sizeTerm(input);
+    drop.hidden=!terms.length;
+    sizeTerm(input);
+    // Un menu de prédiction flottant reste accessible sans agrandir la chaîne.
+    if(terms.length && window.matchMedia('(min-width:811px) and (min-height:510px)').matches){
+      const r=input.getBoundingClientRect();
+      const width=Math.min(330,Math.max(235,drop.scrollWidth));
+      const left=Math.max(8,Math.min(r.left,window.innerWidth-width-9));
+      const menuHeight=Math.min(drop.scrollHeight,265);
+      const below=window.innerHeight-40-r.bottom;
+      const above=r.top-72;
+      const top=(below<menuHeight+7 && above>below) ? Math.max(73,r.top-menuHeight-5) : r.bottom+5;
+      drop.style.left=left+'px';
+      drop.style.top=top+'px';
+      drop.style.width=width+'px';
+    } else {
+      drop.style.left='';drop.style.top='';drop.style.width='';
+    }
   }
   function commitTerm(line,index,value){const d=state.indexation;const arr=getLine(line);if(!value.trim())return;arr[index]=value.trim();d.activeLine=line;renderEditorPage();focusTerm(line,index+1);}
   function insertSuggestion(text){if(isFreeText()){state.indexation.text=(state.indexation.text+' '+text).trim();renderEditorPage();return;}
@@ -419,5 +435,11 @@
   document.addEventListener('dragenter',e=>{if(dragInfo){const wrap=e.target.closest('.term-wrap[data-drag-index]');if(wrap&&Number(wrap.dataset.dragLine)===dragInfo.line)wrap.classList.add('drop-target');}});
   document.addEventListener('dragleave',e=>{const wrap=e.target.closest('.term-wrap.drop-target');if(wrap&&!wrap.contains(e.relatedTarget))wrap.classList.remove('drop-target');});
   document.addEventListener('dragend',()=>{dragInfo=null;$$('.drop-target').forEach(n=>n.classList.remove('drop-target'));});
+  // Le menu flottant n'est pas laissé à une ancienne position si un panneau défile.
+  document.addEventListener('scroll',e=>{
+    if(e.target.closest?.('.edit-grid.suggestions-below')){
+      $$('.dropdown').forEach(d=>d.hidden=true);
+    }
+  },true);
   render();
 })();
