@@ -108,7 +108,7 @@
   });}
   function updateType(){const allowed=allowedDocs();if(!allowed.includes(state.documentType))state.documentType=docLocked()?allowed[0]:'';state.indexation=isFreeText()?{format:'text',text:''}:defaultData();state.seed=Math.floor(Math.random()*99999);}
   function clearFile(){state.fileName='';fileInput.value='';}
-  function clearWork(){state=newState();clearFile();dialog.hidden=true;render();}
+  function clearWork(){state=newState();clearFile();dialog.hidden=true;render();view.scrollTop=0;}
   function saveSnapshot(status){
     try {
       const previous=JSON.parse(localStorage.getItem('mdm-poc2-work-snapshots-v1')||'[]');
@@ -120,12 +120,12 @@
   }
   function showModal(title,detail,callback){$('#confirmationTitle').textContent=title;$('#confirmationMessage').textContent=detail;modalAction=callback||null;dialog.hidden=false;$('#confirmationOk').focus();}
   $('#confirmationOk').addEventListener('click',()=>{dialog.hidden=true;const f=modalAction;modalAction=null;if(f)f();});
-  function startWork(){clearWork();state.step=1;render();}
+  function startWork(){clearWork();state.step=1;render();view.scrollTop=0;}
   function navigate(target){
-    if(target===0){state.step=0;render();return;}
+    if(target===0){state.step=0;render();view.scrollTop=0;return;}
     if(target===1&&state.step===0){startWork();return;}
     if(target<1||target>state.maxStep)return;
-    state.step=target;render();
+    state.step=target;render();view.scrollTop=0;
   }
   function checkMeta(){
     if(!state.indexationType){toast("Sélectionnez le type d'indexation.");return false;}
@@ -134,7 +134,7 @@
     if(!allowedDocs().includes(state.documentType)){toast('Ce type de document ne correspond pas au type d’indexation.');return false;}
     return true;
   }
-  function advanceTo(target){if(target===2&&!checkMeta())return;if(target===3&&!resultText()){toast("Saisissez le résultat d'indexation avant la révision.");return;}state.maxStep=Math.max(state.maxStep,target);state.step=target;render();}
+  function advanceTo(target){if(target===2&&!checkMeta())return;if(target===3&&!resultText()){toast("Saisissez le résultat d'indexation avant la révision.");return;}state.maxStep=Math.max(state.maxStep,target);state.step=target;render();view.scrollTop=0;}
   function renderChrome(){
     const crumbs=[{label:"Travail d'indexation",step:0}];
     if(state.step>=1)crumbs.push({label:'Nouvelle indexation',step:1});
@@ -171,7 +171,7 @@
             ${metaRow("Type d'indexation <span class='required'>*</span>",'indexationType',`<select id="indexationType" data-meta="indexationType">${choose(INDEXATION_TYPES,state.indexationType)}</select>`)}
             ${metaRow("Langue du travail d'indexation",'workLanguage',`<select id="workLanguage" data-meta="workLanguage">${choose(LANGUAGES,state.workLanguage)}</select>`)}
             ${metaRow("Juridiction <span class='required'>*</span>",'jurisdiction',`<select id="jurisdiction" data-meta="jurisdiction">${choose(JURIDICTIONS,state.jurisdiction)}</select>`)}
-          </div><p class="case-help">La langue du travail d'indexation reste à confirmer. Français par défaut.</p></div></section>
+          </div></div></section>
           <section class="card"><div class="card-head">Métadonnées du document</div><div class="card-body"><div class="form-grid">
             ${metaRow("Type de document <span class='required'>*</span>",'documentType',`<select id="documentType" data-meta="documentType" ${docLocked()?'disabled':''}>${choose(c,state.documentType)}</select>`)}
             ${metaRow('Langue du document','documentLanguage',`<select id="documentLanguage" data-meta="documentLanguage">${choose(LANGUAGES,state.documentLanguage)}</select>`)}
@@ -180,10 +180,9 @@
         <section class="card"><div class="card-head">Métadonnées de l'affaire</div><div class="card-body"><div class="form-grid">
           ${metaRow('Affaire','affaire',`<select id="affaire" data-meta="affaire">${choose(possibleCases().map(a=>a.id),state.affaire)}</select>`)}
           ${caseSection()}
-        </div><p class="case-help">Affaires fictives pour la PoC. La sélection d'une affaire complète automatiquement les champs associés.</p></div></section>
+        </div></div></section>
       </div>
       <section class="card work-file-card"><div class="card-head">Document</div><div class="card-body">
-        <p class="work-note">Sélectionnez le fichier après avoir renseigné les données ci-dessus.</p>
         <div class="file-row" id="fileDropZone"><button type="button" class="outline-btn" data-action="attach-file">📎 &nbsp;Sélectionner le fichier…</button>
         <div class="file-name ${state.fileName?'':'empty'}"><span>${esc(state.fileName||'Aucun fichier sélectionné')}</span>${state.fileName?'<button type="button" class="tiny-icon-btn" data-action="remove-file" aria-label="Retirer le fichier">×</button>':''}</div></div>
       </div></section>`;
