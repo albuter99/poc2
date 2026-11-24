@@ -263,7 +263,7 @@
       ['Id Publié',state.publishedId],['Nom usuel',state.usual],
       ...(hasMatter()?[['Matière',state.matter]]:[])
     ];
-    const caseDetails=caseRows.map(([label,value])=>`<dt>${esc(label)}</dt><dd>${esc(value||'—')}</dd>`).join('');
+    const caseDetails=caseRows.map(([label,value])=>`<div class="review-affaire-field"><span class="review-affaire-label">${esc(label)}</span><strong class="review-affaire-value" title="${esc(value||'—')}">${esc(value||'—')}</strong></div>`).join('');
     view.innerHTML=`<div class="review-screen">
       <div class="page-head review-heading"><h1>Révision</h1><p>Contrôlez le résultat avant la sauvegarde.</p></div>
       <div class="review-summary-strip">
@@ -277,15 +277,11 @@
           <div class="review-summary-content"><div class="review-summary-value" title="${esc(state.fileName)}">${esc(state.fileName||'Aucun fichier')}</div>
           <div class="review-summary-minor" title="${esc(state.documentType)}">${esc(state.documentType||'—')} · ${esc(state.documentLanguage||'—')}</div></div>
         </section>
-        <section class="card review-summary-card review-case-card">
-          <div class="card-head">Affaire</div>
-          <div class="review-summary-content"><div class="review-summary-value">${esc(state.affaire||'—')} · ${esc(state.jurisdiction||'—')}</div>
-          <div class="review-summary-minor">${esc(state.usual||'—')}</div>
-          <details class="review-details"><summary>Voir les métadonnées</summary>
-            <div class="review-details-popover"><div class="review-details-heading">Métadonnées de l'affaire</div><dl class="facts">${caseDetails}</dl></div>
-          </details></div>
-        </section>
       </div>
+      <section class="card review-affaire-card" aria-label="Métadonnées de l'affaire">
+        <div class="card-head">Métadonnées de l'affaire</div>
+        <div class="review-affaire-fields">${caseDetails}</div>
+      </section>
       <div class="review-main-grid">
         <section class="card review-result-card">
           <div class="card-head review-main-heading"><span>Résultat d'indexation</span><span class="review-small-count">${lines.length} ${lines.length===1?'ligne':'lignes'}</span></div>
