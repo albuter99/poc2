@@ -145,7 +145,7 @@
     $('.menu-choice:not(:disabled)')?.classList.toggle('active',state.step===1);
   }
   function actionButton(label,act,primary=false){return `<button type="button" class="${primary?'primary-btn':'plain-btn'}" data-action="${act}">${label}</button>`;}
-  function footerSet(left,mid,right){footer.classList.add('spaced');footer.innerHTML=`<div>${left||''}</div><div class="right-actions">${mid||''}${right||''}</div>`;}
+  function footerSet(left,mid,right){footer.classList.add('spaced');footer.innerHTML=`<div class="left-actions">${left||''}</div><div class="middle-actions">${mid||''}</div><div class="right-actions">${right||''}</div>`;}
   function render(){renderChrome();if(state.step===0)renderHome();else if(state.step===1)renderForm();else if(state.step===2)renderEditorPage();else renderReview();}
   function renderHome(){
     view.innerHTML=`<div class="page-head"><h1>Travail d'indexation</h1><p>Choisissez une opération.</p></div>
