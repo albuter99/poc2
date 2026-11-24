@@ -184,3 +184,31 @@
   .review-summary-strip{grid-template-columns:1fr}
   .review-affaire-fields{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:8px}
 }
+
+
+/* Les actions restent visibles à l'écran, sans réduire les champs ni changer la taille des cartes.
+   Seule la zone centrale défile lorsque le contenu dépasse la hauteur disponible. */
+.app-shell{
+  height:100dvh;
+  min-height:0;
+  overflow:hidden;
+}
+.workspace{
+  min-height:0;
+  overflow:hidden;
+}
+.view{
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior-y:contain;
+  scrollbar-gutter:stable;
+}
+.footer{
+  flex-shrink:0;
+  z-index:25;
+}
+@media(max-width:560px){
+  .footer{min-height:35px;height:auto}
+  .footer-actions.spaced{flex-wrap:wrap}
+}
