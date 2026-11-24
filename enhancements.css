@@ -212,3 +212,82 @@
   .footer{min-height:35px;height:auto}
   .footer-actions.spaced{flex-wrap:wrap}
 }
+
+/* Indexation : afficher immédiatement les trois suggestions sous une chaîne normale.
+   En cas de chaîne exceptionnellement longue, seul le panneau concerné défile. */
+@media (min-width:811px) and (min-height:510px) {
+  .view:has(.edit-grid.suggestions-below){
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    padding-top:12px;
+    padding-bottom:10px;
+  }
+  .view:has(.edit-grid.suggestions-below)>.page-head{flex:none;margin-bottom:9px}
+  .edit-grid.suggestions-below{
+    flex:1;
+    min-height:0;
+    grid-template-rows:minmax(0,max-content) minmax(0,1fr);
+  }
+  .edit-grid.suggestions-below>.edit-left{
+    min-height:0;
+    max-height:100%;
+    overflow-y:auto;
+    overflow-x:hidden;
+    scrollbar-width:thin;
+  }
+  .edit-grid.suggestions-below>.edit-main{
+    min-height:0;
+    max-height:38dvh;
+    overflow-y:auto;
+    overflow-x:hidden;
+    scrollbar-width:thin;
+  }
+  .edit-grid.suggestions-below>.edit-right{
+    min-height:0;
+    height:100%;
+    align-self:stretch;
+    overflow:hidden;
+  }
+  .edit-grid.suggestions-below>.edit-right>.card{
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+    height:100%;
+    overflow:hidden;
+  }
+  .edit-grid.suggestions-below #recommendationsContent{
+    flex:1;
+    min-height:0;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    scrollbar-width:thin;
+  }
+  .edit-grid.suggestions-below .edit-right .suggest-body{
+    overflow:visible;
+    max-height:none;
+  }
+  .edit-grid.suggestions-below .editor-area{padding-top:8px;padding-bottom:9px}
+  .edit-grid.suggestions-below .editor-hint{margin-top:7px}
+  .edit-grid.suggestions-below .suggest-context{margin:6px 10px 0;padding:4px 7px}
+  .edit-grid.suggestions-below .suggestion-column{padding:8px 10px 8px}
+  .edit-grid.suggestions-below .suggestion-column h3{margin-bottom:7px}
+  .edit-grid.suggestions-below .suggestion-column .suggestion{padding:5px 7px;margin-bottom:4px}
+  .edit-grid.suggestions-below .suggestion-column .muted-hint{margin:5px 0}
+}
+
+/* Prediction : le menu flottant ne modifie pas la hauteur de l'éditeur. */
+@media (min-width:811px) and (min-height:510px) {
+  .edit-grid.suggestions-below .type-editor .term-wrap:has(.dropdown:not([hidden])){
+    flex-basis:auto;
+    flex-wrap:nowrap;
+  }
+  .edit-grid.suggestions-below .type-editor .term-wrap .dropdown:not([hidden]){
+    position:fixed;
+    z-index:120;
+    margin:0;
+    flex:none;
+    max-width:min(330px,80vw);
+    box-shadow:0 5px 16px #152c4236;
+  }
+}
