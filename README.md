@@ -15,7 +15,7 @@ Démonstration HTML/CSS/JavaScript autonome, en français, publiée avec GitHub 
 
 - **Rechercher des termes dans les exemples de la PoC** : recherche insensible aux accents, à la casse et aux espaces répétés, avec corrections approximatives pour de petites fautes de frappe. Il ne s'agit PAS d'une recherche dans le référentiel MDM.
 - **Annuler / Rétablir** : commandes visibles dans l'en-tête de l'éditeur, raccourcis Ctrl+Z / Ctrl+Y (ou Ctrl+Maj+Z), sur la saisie, la suppression, le déplacement, l'ajout de lignes et l'insertion de suggestions. Historique local limité aux 60 dernières étapes, réinitialisé à la création d'un travail ou au changement de type d'indexation.
-- **Réutiliser partiellement les chaînes** : cliquer sur une chaîne de référence ou une chaîne d'indexation ouvre un panneau avec trois opérations : remplacer la ligne, ajouter tous les maillons ou ajouter uniquement les maillons cochés. Rien n'est remplacé avant le choix explicite.
+- **Insérer une chaîne suggérée** : cliquer sur une chaîne de référence ou une chaîne d'indexation remplace directement la ligne active, sans panneau supplémentaire. L'opération peut être annulée grâce à l'historique.
 - **Statuts indicatifs des maillons** : « Exemple PoC », « Nouveau terme » et « Suggestion IA * ». La détection « Nouveau terme » compare uniquement les données fictives embarquées et ne doit jamais être interprétée comme une vérification MDM.
 - **Révision** : deux vérifications conservées, les nouveaux termes non présents dans les exemples de la PoC et les suggestions marquées *. Elles ne valident ni l'existence réelle d'un terme ni sa conformité juridique.
 
