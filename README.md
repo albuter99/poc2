@@ -11,6 +11,14 @@ Démonstration HTML/CSS/JavaScript autonome, en français, publiée avec GitHub 
 
 **Sauvegarder (brouillon)** conserve une copie locale dans le navigateur, sans validation ni transfert vers MDM. Le bouton **Sauvegarder** de la révision conserve également une copie de démonstration. L'interface **Modifier une indexation** n'est pas encore disponible.
 
+## Améliorations de l'éditeur (novembre 2026)
+
+- **Rechercher des termes dans les exemples de la PoC** : recherche insensible aux accents, à la casse et aux espaces répétés, avec corrections approximatives pour de petites fautes de frappe. Il ne s'agit PAS d'une recherche dans le référentiel MDM.
+- **Annuler / Rétablir** : commandes visibles dans l'en-tête de l'éditeur, raccourcis Ctrl+Z / Ctrl+Y (ou Ctrl+Maj+Z), sur la saisie, la suppression, le déplacement, l'ajout de lignes et l'insertion de suggestions. Historique local limité aux 60 dernières étapes, réinitialisé à la création d'un travail ou au changement de type d'indexation.
+- **Réutiliser partiellement les chaînes** : cliquer sur une chaîne de référence ou une chaîne d'indexation ouvre un panneau avec trois opérations : remplacer la ligne, ajouter tous les maillons ou ajouter uniquement les maillons cochés. Rien n'est remplacé avant le choix explicite.
+- **Statuts indicatifs des maillons** : « Exemple PoC », « Nouveau terme » et « Suggestion IA * ». La détection « Nouveau terme » compare uniquement les données fictives embarquées et ne doit jamais être interprétée comme une vérification MDM.
+- **Révision** : deux vérifications conservées, les nouveaux termes non présents dans les exemples de la PoC et les suggestions marquées *. Elles ne valident ni l'existence réelle d'un terme ni sa conformité juridique.
+
 ## Limites explicites
 
 - Les affaires `DEMO-...` et les données associées sont fictives.
