@@ -307,19 +307,6 @@
 .term-legend .legend-ia:before{background:#4279ad}
 .term-legend small{font-size:9px;color:#8a9aab}
 .dropdown .approx-hint{display:block;font-size:9px;color:#637e95;margin-top:3px}
-.chain-picker-panel{width:min(640px,100%);max-height:min(86dvh,740px);display:flex;flex-direction:column;padding:18px 20px}
-.chain-picker-panel h2{margin:0 0 8px}
-.chain-picker-source{font-weight:700;color:#245d8e;font-size:11px;margin:0 0 5px!important}
-.chain-picker-help{font-size:11px!important;line-height:1.45!important;color:#648096;margin:0 0 10px!important}
-.chain-picker-terms{overflow:auto;min-height:0;max-height:40vh;border:1px solid #d6e2ec;border-radius:4px;background:#fcfdff;padding:4px 8px}
-.chain-picker-term{display:flex;align-items:flex-start;gap:9px;padding:9px 6px;border-bottom:1px solid #e5ecf3;font-size:12px;line-height:1.45;cursor:pointer}
-.chain-picker-term:last-child{border:0}
-.chain-picker-term input{flex:none;width:16px;height:16px;min-width:16px;margin:1px 0 0;accent-color:#1b669e}
-.chain-picker-term span{overflow-wrap:anywhere}
-.chain-picker-term:hover{background:#eff5fc}
-.chain-picker-actions{display:flex;justify-content:flex-end;gap:7px;flex-wrap:wrap;margin-top:14px}
-.chain-picker-actions .plain-btn,.chain-picker-actions .primary-btn{font-size:11px;min-height:29px;padding:5px 9px;white-space:normal}
 @media(max-width:950px){
   .edit-header-actions .history-btn{font-size:9px;min-height:22px;padding:3px 5px}
-  .chain-picker-panel{padding:14px}
 }
