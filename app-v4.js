@@ -141,6 +141,47 @@
   let toastTimer=null;
   let dragInfo=null;
   let modalAction=null;
+
+  // Réutilisation partielle, sans écraser la chaîne en cours sans choix explicite.
+  let chainChoice=null;
+  const chainPicker=document.createElement('div');
+  chainPicker.id='chainPicker';chainPicker.className='confirmation-backdrop';chainPicker.hidden=true;
+  document.body.appendChild(chainPicker);
+  function closeChainPicker(){chainPicker.hidden=true;chainPicker.replaceChildren();chainChoice=null;}
+  function openChainPicker(value,source){
+    if(isFreeText()){replaceLineFromChain(value);return;}
+    const terms=String(value||'').split(/\s+-\s+/).map(term=>term.trim()).filter(Boolean);
+    if(!terms.length)return;
+    finishTyping();
+    chainChoice={terms,source};
+    chainPicker.innerHTML=`<section class="confirmation-panel chain-picker-panel" role="dialog" aria-modal="true" aria-labelledby="chainPickerTitle">
+      <h2 id="chainPickerTitle">Réutiliser une chaîne</h2>
+      <p class="chain-picker-source">${esc(source||'Chaîne proposée')} · ${terms.length} maillons</p>
+      <p class="chain-picker-help">Choisissez comment utiliser cette proposition. Les maillons cochés seront ajoutés uniquement si vous sélectionnez « Ajouter la sélection ».</p>
+      <div class="chain-picker-terms">${terms.map((term,i)=>`<label class="chain-picker-term"><input type="checkbox" data-chain-select="${i}"><span>${esc(term)}</span></label>`).join('')}</div>
+      <div class="chain-picker-actions">
+        <button type="button" class="plain-btn" data-action="chain-cancel">Annuler</button>
+        <button type="button" class="plain-btn" data-action="chain-replace">Remplacer la ligne</button>
+        <button type="button" class="plain-btn" data-action="chain-append">Ajouter toute la chaîne</button>
+        <button type="button" class="primary-btn" data-action="chain-selection">Ajouter la sélection</button>
+      </div></section>`;
+    chainPicker.hidden=false;
+    $('[data-action="chain-cancel"]',chainPicker)?.focus();
+  }
+  function applyChainChoice(mode){
+    if(!chainChoice)return;
+    const all=chainChoice.terms;
+    const chosen=$('input[data-chain-select]:checked',chainPicker)
+      .map(el=>all[Number(el.dataset.chainSelect)]).filter(Boolean);
+    if(mode==='selection'&&!chosen.length){toast('Cochez au moins un maillon.');return;}
+    const addition=mode==='selection'?chosen:all;
+    const i=state.indexation.activeLine;
+    beforeEdit();
+    state.indexation.lines[i]=mode==='replace'?[...all]:[...getLine(i),...addition];
+    closeChainPicker();renderEditorPage();
+    toast(mode==='replace'?'Chaîne remplacée.':addition.length+' maillon(s) ajouté(s).');
+  }
+  chainPicker.addEventListener('click',event=>{if(event.target===chainPicker)closeChainPicker();});
   const view=$('#view'), footer=$('#footerActions'), fileInput=$('#fileInput'), dialog=$('#confirmationDialog');
   function toast(message){const el=$('#toast');clearTimeout(toastTimer);el.textContent=message;el.classList.add('visible');toastTimer=setTimeout(()=>el.classList.remove('visible'),3600);}
   function currentCase(){return AFFAIRES.find(a=>a.id===state.affaire);}
@@ -459,10 +500,10 @@
       drop.style.left='';drop.style.top='';drop.style.width='';
     }
   }
-  function commitTerm(line,index,value){const d=state.indexation;const arr=getLine(line);if(!value.trim())return;arr[index]=value.trim();d.activeLine=line;renderEditorPage();focusTerm(line,index+1);}
-  function insertSuggestion(text){if(isFreeText()){state.indexation.text=(state.indexation.text+' '+text).trim();renderEditorPage();return;}
+  function commitTerm(line,index,value){const d=state.indexation;const arr=getLine(line);if(!value.trim())return;finishTyping();if(arr[index]!==value.trim())beforeEdit();arr[index]=value.trim();d.activeLine=line;renderEditorPage();focusTerm(line,index+1);}
+  function insertSuggestion(text){beforeEdit();if(isFreeText()){state.indexation.text=(state.indexation.text+' '+text).trim();renderEditorPage();return;}
     const d=state.indexation;const arr=activeLine();arr.push(text);renderEditorPage();focusTerm(d.activeLine,arr.length);}
-  function replaceLineFromChain(text){if(isFreeText()){state.indexation.text=text;}else{const i=state.indexation.activeLine;state.indexation.lines[i]=text.split(/\s+-\s+/).filter(Boolean);}renderEditorPage();toast('Proposition insérée. Elle reste modifiable.');}
+  function replaceLineFromChain(text){beforeEdit();if(isFreeText()){state.indexation.text=text;}else{const i=state.indexation.activeLine;state.indexation.lines[i]=text.split(/\s+-\s+/).filter(Boolean);}renderEditorPage();toast('Proposition insérée. Elle reste modifiable.');}
   function setMeta(key,value){
     if(!['indexationType','workLanguage','jurisdiction','documentType','documentLanguage','affaire'].includes(key))return;
     if(key==='indexationType'){state[key]=value;updateType();}
@@ -481,6 +522,7 @@
     const step=event.target.closest('button[data-step]');if(step){navigate(Number(step.dataset.step));return;}
     const element=event.target.closest('[data-action]');if(!element){if(!event.target.closest('.term-wrap'))$$('.dropdown').forEach(d=>d.hidden=true);return;}
     const act=element.dataset.action;const l=Number(element.dataset.line),idx=Number(element.dataset.index);const value=element.dataset.value;
+    if(state.step===2)finishTyping();
     switch(act){
       case 'home':navigate(0);break;
       case 'new-work':startWork();break;
@@ -492,30 +534,46 @@
       case 'remove-file':clearFile();render();toast('Fichier retiré. Les métadonnées restent inchangées.');break;
       case 'save-draft':saveDraft();break;
       case 'final-save':saveFinal();break;
-      case 'clear-result':state.indexation=isFreeText()?{format:'text',text:''}:defaultData();renderEditorPage();break;
-      case 'add-line':if(canMultipleLines()){state.indexation.lines.push([]);state.indexation.activeLine=state.indexation.lines.length-1;renderEditorPage();focusTerm(state.indexation.activeLine,0);}break;
-      case 'remove-line':if(canMultipleLines()&&state.indexation.lines.length>1){state.indexation.lines.splice(l,1);state.indexation.activeLine=Math.max(0,Math.min(state.indexation.activeLine,state.indexation.lines.length-1));renderEditorPage();}break;
-      case 'remove-term':{const terms=getLine(l);terms.splice(idx,1);state.indexation.activeLine=l;renderEditorPage();break;}
-      case 'insert-term':{const terms=getLine(l);terms[idx]=value;state.indexation.activeLine=l;renderEditorPage();focusTerm(l,idx+1);break;}
+      case 'history-undo':historyUndo();break;
+      case 'history-redo':historyRedo();break;
+      case 'chain-cancel':closeChainPicker();break;
+      case 'chain-replace':applyChainChoice('replace');break;
+      case 'chain-append':applyChainChoice('append');break;
+      case 'chain-selection':applyChainChoice('selection');break;
+      case 'clear-result':beforeEdit();state.indexation=isFreeText()?{format:'text',text:''}:defaultData();renderEditorPage();break;
+      case 'add-line':if(canMultipleLines()){beforeEdit();state.indexation.lines.push([]);state.indexation.activeLine=state.indexation.lines.length-1;renderEditorPage();focusTerm(state.indexation.activeLine,0);}break;
+      case 'remove-line':if(canMultipleLines()&&state.indexation.lines.length>1){beforeEdit();state.indexation.lines.splice(l,1);state.indexation.activeLine=Math.max(0,Math.min(state.indexation.activeLine,state.indexation.lines.length-1));renderEditorPage();}break;
+      case 'remove-term':{beforeEdit();const terms=getLine(l);terms.splice(idx,1);state.indexation.activeLine=l;renderEditorPage();break;}
+      case 'insert-term':{beforeEdit();const terms=getLine(l);terms[idx]=value;state.indexation.activeLine=l;renderEditorPage();focusTerm(l,idx+1);break;}
       case 'add-suggested-term':insertSuggestion(value);break;
-      case 'apply-chain':replaceLineFromChain(value);break;
+      case 'apply-chain':openChainPicker(value,element.dataset.source);break;
       case 'apply-text':replaceLineFromChain(value);break;
     }
   });
   document.addEventListener('change',event=>{if(event.target.dataset.meta)setMeta(event.target.dataset.meta,event.target.value);});
   document.addEventListener('input',event=>{
     const e=event.target;
-    if(e.dataset.termLine!==undefined){const line=Number(e.dataset.termLine),i=Number(e.dataset.termIndex);getLine(line)[i]=e.value;state.indexation.activeLine=line;showDropdown(e);refreshSuggestions();}
-    if(e.matches('[data-free-text]'))state.indexation.text=e.value;
+    if(e.dataset.termLine!==undefined){startTyping();const line=Number(e.dataset.termLine),i=Number(e.dataset.termIndex);getLine(line)[i]=e.value;state.indexation.activeLine=line;showDropdown(e);refreshSuggestions();updateHistoryButtons();}
+    if(e.matches('[data-free-text]')){startTyping();state.indexation.text=e.value;updateHistoryButtons();}
   });
-  document.addEventListener('focusin',event=>{const e=event.target;if(e.dataset.termLine!==undefined){state.indexation.activeLine=Number(e.dataset.termLine);showDropdown(e);refreshSuggestions();}});
+  document.addEventListener('focusin',event=>{const e=event.target;if(e.dataset.termLine!==undefined){state.indexation.activeLine=Number(e.dataset.termLine);startTyping();showDropdown(e);refreshSuggestions();}if(e.matches('[data-free-text]'))startTyping();});
+  document.addEventListener('focusout',event=>{const e=event.target;if(e.dataset.termLine!==undefined||e.matches('[data-free-text]'))finishTyping();});
   document.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&!chainPicker.hidden){event.preventDefault();closeChainPicker();return;}
+    if(state.step===2&&(event.ctrlKey||event.metaKey)&&!event.altKey){
+      const key=event.key.toLowerCase();
+      if(key==='z'||key==='y'){
+        event.preventDefault();
+        if(key==='y'||event.shiftKey)historyRedo();else historyUndo();
+        return;
+      }
+    }
     const e=event.target;
     if(e.dataset.termLine!==undefined){
       const l=Number(e.dataset.termLine),i=Number(e.dataset.termIndex);
       if(event.key==='Escape')$$('.dropdown').forEach(d=>d.hidden=true);
       if(event.key==='Enter'||event.key==='Tab'){event.preventDefault();if(e.value.trim())commitTerm(l,i,e.value);else focusTerm(l,i+1);}
-      if(event.key==='Backspace'&&!e.value&&i===getLine(l).length&&i>0){event.preventDefault();getLine(l).splice(i-1,1);renderEditorPage();focusTerm(l,i-1);}
+      if(event.key==='Backspace'&&!e.value&&i===getLine(l).length&&i>0){event.preventDefault();beforeEdit();getLine(l).splice(i-1,1);renderEditorPage();focusTerm(l,i-1);}
     }
     if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='s'&&state.step===2){event.preventDefault();saveDraft();}
   });
@@ -525,7 +583,7 @@
     if(e.target.closest('#fileDropZone')){e.preventDefault();attachFile(e.dataTransfer?.files?.[0]);return;}
     const item=e.target.closest('.term-wrap[data-drag-index]');if(!item||!dragInfo)return;
     e.preventDefault();const destLine=Number(item.dataset.dragLine),destIndex=Number(item.dataset.dragIndex);
-    if(destLine===dragInfo.line&&destIndex!==dragInfo.index){const arr=getLine(destLine);const [moved]=arr.splice(dragInfo.index,1);arr.splice(Math.min(destIndex,arr.length),0,moved);state.indexation.activeLine=destLine;renderEditorPage();toast('Ordre des maillons mis à jour.');}
+    if(destLine===dragInfo.line&&destIndex!==dragInfo.index){beforeEdit();const arr=getLine(destLine);const [moved]=arr.splice(dragInfo.index,1);arr.splice(Math.min(destIndex,arr.length),0,moved);state.indexation.activeLine=destLine;renderEditorPage();toast('Ordre des maillons mis à jour.');}
     dragInfo=null;$$('.drop-target').forEach(n=>n.classList.remove('drop-target'));
   });
   document.addEventListener('dragstart',e=>{
