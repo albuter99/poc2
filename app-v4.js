@@ -171,7 +171,7 @@
   function applyChainChoice(mode){
     if(!chainChoice)return;
     const all=chainChoice.terms;
-    const chosen=$('input[data-chain-select]:checked',chainPicker)
+    const chosen=[...chainPicker.querySelectorAll('input[data-chain-select]:checked')]
       .map(el=>all[Number(el.dataset.chainSelect)]).filter(Boolean);
     if(mode==='selection'&&!chosen.length){toast('Cochez au moins un maillon.');return;}
     const addition=mode==='selection'?chosen:all;
