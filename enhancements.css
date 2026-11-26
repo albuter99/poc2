@@ -291,3 +291,35 @@
     box-shadow:0 5px 16px #152c4236;
   }
 }
+/* Éditeur : historique, origine indicative des termes et réutilisation partielle.
+   Les listes d'exemple ne représentent pas le référentiel MDM. */
+.edit-header-actions{display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.edit-header-actions .history-btn{font-size:10px;line-height:1.2;min-height:24px;padding:3px 7px;white-space:nowrap}
+.edit-header-actions .tiny-icon-btn{font-size:15px;margin-left:3px}
+.edit-main .term-chip.term-kind-demo{border-left:3px solid #218457}
+.edit-main .term-chip.term-kind-new{border-left:3px solid #bf8a39}
+.edit-main .term-chip.term-kind-ia{border-left:3px solid #4279ad;background:#f4f8fd}
+.term-legend{display:flex;align-items:center;flex-wrap:wrap;gap:6px 11px;margin-top:8px;font-size:10px;color:#5f7690}
+.term-legend span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.term-legend span:before{content:'';display:inline-block;width:7px;height:7px;border-radius:2px;background:#9eafbd}
+.term-legend .legend-demo:before{background:#218457}
+.term-legend .legend-new:before{background:#bf8a39}
+.term-legend .legend-ia:before{background:#4279ad}
+.term-legend small{font-size:9px;color:#8a9aab}
+.dropdown .approx-hint{display:block;font-size:9px;color:#637e95;margin-top:3px}
+.chain-picker-panel{width:min(640px,100%);max-height:min(86dvh,740px);display:flex;flex-direction:column;padding:18px 20px}
+.chain-picker-panel h2{margin:0 0 8px}
+.chain-picker-source{font-weight:700;color:#245d8e;font-size:11px;margin:0 0 5px!important}
+.chain-picker-help{font-size:11px!important;line-height:1.45!important;color:#648096;margin:0 0 10px!important}
+.chain-picker-terms{overflow:auto;min-height:0;max-height:40vh;border:1px solid #d6e2ec;border-radius:4px;background:#fcfdff;padding:4px 8px}
+.chain-picker-term{display:flex;align-items:flex-start;gap:9px;padding:9px 6px;border-bottom:1px solid #e5ecf3;font-size:12px;line-height:1.45;cursor:pointer}
+.chain-picker-term:last-child{border:0}
+.chain-picker-term input{flex:none;width:16px;height:16px;min-width:16px;margin:1px 0 0;accent-color:#1b669e}
+.chain-picker-term span{overflow-wrap:anywhere}
+.chain-picker-term:hover{background:#eff5fc}
+.chain-picker-actions{display:flex;justify-content:flex-end;gap:7px;flex-wrap:wrap;margin-top:14px}
+.chain-picker-actions .plain-btn,.chain-picker-actions .primary-btn{font-size:11px;min-height:29px;padding:5px 9px;white-space:normal}
+@media(max-width:950px){
+  .edit-header-actions .history-btn{font-size:9px;min-height:22px;padding:3px 5px}
+  .chain-picker-panel{padding:14px}
+}
