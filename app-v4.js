@@ -297,7 +297,7 @@
   function termChip(line,index,value,isEmpty=false){
     return `<div class="term-wrap" data-drag-line="${line}" data-drag-index="${index}">
       ${index?'<span class="term-divider">-</span>':''}
-      <div class="term-chip ${isEmpty?'input-empty':''}">
+      <div class="term-chip ${isEmpty?'input-empty':'term-kind-'+termKind(value)}" title="${esc(isEmpty?'':termKindLabel(termKind(value)))}">
         ${isEmpty?'':`<button type="button" class="drag-handle" draggable="true" aria-label="Déplacer le maillon ${index+1}" title="Cliquer-glisser pour réordonner">⠿</button>`}
         <textarea rows="2" data-term-line="${line}" data-term-index="${index}" aria-label="Ligne ${line+1}, maillon ${index+1}" autocomplete="off" spellcheck="false" placeholder="${isEmpty?'Terme suivant…':''}">${esc(value)}</textarea>
         ${isEmpty?'':`<button type="button" class="remove-term" data-action="remove-term" data-line="${line}" data-index="${index}" title="Supprimer ce terme" aria-label="Supprimer le terme">×</button>`}
@@ -311,8 +311,8 @@
     const data=state.indexation;
     const body=data.format==='text'
       ? `<textarea class="free-text" id="freeText" data-free-text placeholder="Saisissez l'objet ou choisissez une proposition de texte…">${esc(data.text)}</textarea><p class="editor-hint">Texte libre : une seule réponse finale.</p>`
-      : `<div>${data.lines.map((line,i)=>renderLine(i,line)).join('')}${canMultipleLines()?'<button type="button" class="line-add" data-action="add-line">+ Ajouter une ligne</button>':''}<p class="editor-hint"><kbd>Tab</kbd> ou <kbd>Entrée</kbd> crée le maillon suivant. Déplacez les maillons par cliquer-glisser. Le résultat peut être long.</p></div>`;
-    return `<section class="card type-editor type-editor-active"><div class="card-head type-editor-head"><span>${esc(state.indexationType)} <small class="editing-badge">En cours</small></span><button class="tiny-icon-btn" type="button" data-action="clear-result" title="Effacer l'indexation">↶</button></div><div class="editor-area">${body}</div></section>`;
+      : `<div>${data.lines.map((line,i)=>renderLine(i,line)).join('')}${canMultipleLines()?'<button type="button" class="line-add" data-action="add-line">+ Ajouter une ligne</button>':''}<p class="editor-hint"><kbd>Tab</kbd> ou <kbd>Entrée</kbd> crée le maillon suivant. Déplacez les maillons par cliquer-glisser. Le résultat peut être long.</p><div class="term-legend"><span class="legend-demo">Exemple PoC</span><span class="legend-new">Nouveau terme</span><span class="legend-ia">Suggestion IA *</span><small>Statuts indicatifs : aucun référentiel MDM connecté.</small></div></div>`;
+    return `<section class="card type-editor type-editor-active"><div class="card-head type-editor-head"><span>${esc(state.indexationType)} <small class="editing-badge">En cours</small></span><div class="edit-header-actions"><button class="plain-btn history-btn" type="button" data-action="history-undo" title="Annuler (Ctrl+Z)" ${undoStack.length?'':'disabled'}>↶ Annuler</button><button class="plain-btn history-btn" type="button" data-action="history-redo" title="Rétablir (Ctrl+Y)" ${redoStack.length?'':'disabled'}>↷ Rétablir</button><button class="tiny-icon-btn" type="button" data-action="clear-result" title="Effacer l'indexation">×</button></div></div><div class="editor-area">${body}</div></section>`;
   }
   function nextTerms(line=state.indexation.activeLine,position=null){
     const arr=getLine(line).filter(x=>x.trim());const idx=position===null?arr.length:position;
@@ -331,7 +331,7 @@
   function renderSuggestions(){
     const data=state.indexation;
     const ctx=`<div class="suggest-context">Type : <strong>${esc(state.indexationType)}</strong><br><small>Exemples simulés, sans moteur d'IA connecté</small></div>`;
-    const renderBtns=(values,action)=>values.map(text=>`<button class="suggestion ${text.endsWith('*')?'ai-suggestion':''}" type="button" data-action="${action}" data-value="${esc(text)}">${esc(text)}</button>`).join('');
+    const renderBtns=(values,action,source='')=>values.map(text=>`<button class="suggestion ${text.endsWith('*')?'ai-suggestion':''}" type="button" data-action="${action}" data-source="${esc(source)}" data-value="${esc(text)}">${esc(text)}</button>`).join('');
     if(data.format==='text'){
       const texts=["Objet de la demande relatif à l'interprétation du droit de l'Union.","Examen de la recevabilité du recours dans le contexte de l'affaire.","Question concernant le champ d'application d'un acte de l'Union."];
       const phrases=['Recevabilité du recours','Interprétation du droit de l’Union','Approche complémentaire suggérée par l’IA *'];
@@ -340,7 +340,7 @@
         <div class="suggest-sep"></div><h3>Chaîne d'indexation</h3>${renderBtns(texts,'apply-text')}
         <p class="muted-hint">* Suggestion intelligente (IA), à vérifier.</p></div>`;
     }
-    return `<div class="suggest-body">${ctx}<h3>Terme</h3>${renderBtns(nextTerms(),'add-suggested-term')}<div class="suggest-sep"></div><h3>Chaîne de référence</h3>${renderBtns(chainSamples(REFERENCE_CHAINS),'apply-chain')}<div class="suggest-sep"></div><h3>Chaîne d'indexation</h3>${renderBtns(chainSamples(HISTORICAL_CHAINS),'apply-chain')}<p class="muted-hint">* Suggestion intelligente (IA). Les nouveaux termes nécessitent une vérification.</p></div>`;
+    return `<div class="suggest-body">${ctx}<h3>Terme</h3>${renderBtns(nextTerms(),'add-suggested-term')}<div class="suggest-sep"></div><h3>Chaîne de référence</h3>${renderBtns(chainSamples(REFERENCE_CHAINS),'apply-chain','Chaîne de référence')}<div class="suggest-sep"></div><h3>Chaîne d'indexation</h3>${renderBtns(chainSamples(HISTORICAL_CHAINS),'apply-chain',"Chaîne d'indexation")}<p class="muted-hint">* Suggestion intelligente (IA). Les nouveaux termes nécessitent une vérification.</p></div>`;
   }
   function renderEditorPage(){
     view.innerHTML=`<div class="page-head"><h1>Indexation</h1><p>Construisez le résultat terme par terme, ou choisissez une suggestion.</p></div>
@@ -348,7 +348,7 @@
     <aside class="edit-right"><section class="card"><div class="card-head">Suggestions</div><div id="recommendationsContent">${renderSuggestions()}</div></section></aside></div>`;
     positionSuggestionColumns();
     footerSet(actionButton('Précédent','previous'),actionButton('Sauvegarder (brouillon)','save-draft'),actionButton('Suivant','next-review',true));
-    resizeTerms();
+    resizeTerms();updateHistoryButtons();
   }
   function resultLines(){if(isFreeText())return [state.indexation.text.trim()].filter(Boolean);return state.indexation.lines.map(arr=>arr.map(x=>x.trim()).filter(Boolean).join(' - ')).filter(Boolean);}
   function resultText(){return resultLines().join('\n');}
@@ -398,7 +398,7 @@
               <div class="review-check-copy"><strong>Suggestion intelligente (*)</strong><small>${ai?'Proposition IA détectée':'Aucune suggestion IA'}</small></div>
               <span class="review-check-state ${ai?'needs-review':''}">${ai?'À vérifier':'OK'}</span></div>
           </div>
-          <div class="review-check-footnote">Contrôles simulés dans cette PoC.</div>
+          <div class="review-check-footnote">Contrôles sur vocabulaire fictif. Référentiel MDM non connecté.</div>
         </section>
       </div>
     </div>`;
@@ -438,9 +438,10 @@
   function focusTerm(line,index){const input=$(`[data-term-line="${line}"][data-term-index="${index}"]`);if(input){input.focus();input.setSelectionRange(input.value.length,input.value.length);}}
   function showDropdown(input){const wrap=input.closest('.term-wrap');if(!wrap)return;$$('.dropdown').forEach(x=>{if(x!==$('.dropdown',wrap))x.hidden=true;});const drop=$('.dropdown',wrap);if(!drop)return;
     const line=Number(input.dataset.termLine), idx=Number(input.dataset.termIndex), typed=norm(input.value);
-    let terms=nextTerms(line,idx);if(typed){terms=unique([...pool(),...AI_TERMS]).filter(x=>norm(x).includes(typed)).slice(0,3);}
-    drop.innerHTML=terms.map(x=>`<button type="button" class="${x.endsWith('*')?'ai-option':''}" data-action="insert-term" data-line="${line}" data-index="${idx}" data-value="${esc(x)}">${esc(x)}</button>`).join('');
-    drop.hidden=!terms.length;
+    const matches=typed?demoSearch(input.value):nextTerms(line,idx).map(term=>({term,approx:false}));
+    const terms=matches.map(item=>item.term);
+    drop.innerHTML=matches.map(({term,approx})=>`<button type="button" class="${term.endsWith('*')?'ai-option':''}" data-action="insert-term" data-line="${line}" data-index="${idx}" data-value="${esc(term)}">${esc(term)}${approx?'<small class="approx-hint">≈ Correction proposée</small>':''}</button>`).join('');
+    drop.hidden=!matches.length;
     sizeTerm(input);
     // Un menu de prédiction flottant reste accessible sans agrandir la chaîne.
     if(terms.length && window.matchMedia('(min-width:811px) and (min-height:510px)').matches){
