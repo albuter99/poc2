@@ -6,7 +6,7 @@
   const $ = (selector, root=document) => root.querySelector(selector);
   const $$ = (selector, root=document) => [...root.querySelectorAll(selector)];
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-  const norm = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('fr').trim();
+  const norm = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('fr').replace(/[’‘]/g,"'").replace(/\s+/g,' ').trim();
   const unique = items => [...new Set(items.filter(Boolean))];
   const choose = (list, value, label='Sélectionner…') => `<option value="" ${!value?'selected':''}>${esc(label)}</option>` + list.map(x=>`<option value="${esc(x)}" ${x===value?'selected':''}>${esc(x)}</option>`).join('');
   const LANGUAGES = [
@@ -85,6 +85,59 @@
   function defaultData(){return {format:'terms',lines:[[]],activeLine:0};}
   function newState(){return {step:0,maxStep:1,kind:'new',indexationType:'',workLanguage:'Français',jurisdiction:'',documentType:'',documentLanguage:'',affaire:'',fileName:'',date:dayLocal(),year:'',order:'',archetype:'',publishedId:'',usual:'',matter:'',indexation:defaultData(),status:'',seed:Math.floor(Math.random()*99999)};}
   let state=newState();
+  // Historique local des modifications de l'éditeur, indépendant des brouillons MDM.
+  const undoStack=[], redoStack=[];
+  let typingSnapshot=null;
+  function historySnapshot(){
+    const data=state.indexation;
+    return JSON.stringify(data.format==='text'
+      ? {format:'text',text:data.text||''}
+      : {format:'terms',lines:(data.lines||[]).map(line=>[...line])});
+  }
+  function updateHistoryButtons(){
+    const undo=$('[data-action="history-undo"]'),redo=$('[data-action="history-redo"]');
+    if(undo)undo.disabled=!undoStack.length && (typingSnapshot===null || typingSnapshot===historySnapshot());
+    if(redo)redo.disabled=!redoStack.length;
+  }
+  function saveHistory(before){
+    if(before===historySnapshot())return;
+    if(undoStack[undoStack.length-1]!==before)undoStack.push(before);
+    if(undoStack.length>60)undoStack.shift();
+    redoStack.length=0;
+    updateHistoryButtons();
+  }
+  function startTyping(){if(typingSnapshot===null)typingSnapshot=historySnapshot();}
+  function finishTyping(){const previous=typingSnapshot;typingSnapshot=null;if(previous!==null)saveHistory(previous);}
+  function beforeEdit(){
+    finishTyping();
+    const current=historySnapshot();
+    if(undoStack[undoStack.length-1]!==current)undoStack.push(current);
+    if(undoStack.length>60)undoStack.shift();
+    redoStack.length=0;
+    updateHistoryButtons();
+  }
+  function resetEditHistory(){typingSnapshot=null;undoStack.length=0;redoStack.length=0;updateHistoryButtons();}
+  function restoreHistory(snapshot){
+    const data=JSON.parse(snapshot);
+    const currentLine=state.indexation.activeLine||0;
+    state.indexation=data.format==='text'
+      ? {format:'text',text:data.text||''}
+      : {format:'terms',lines:data.lines,activeLine:Math.min(currentLine,Math.max(0,data.lines.length-1))};
+    renderEditorPage();
+  }
+  function historyUndo(){
+    finishTyping();
+    if(!undoStack.length)return;
+    const current=historySnapshot(), previous=undoStack.pop();
+    redoStack.push(current);restoreHistory(previous);
+  }
+  function historyRedo(){
+    finishTyping();
+    if(!redoStack.length)return;
+    const current=historySnapshot(),next=redoStack.pop();
+    undoStack.push(current);restoreHistory(next);
+  }
+
   let toastTimer=null;
   let dragInfo=null;
   let modalAction=null;
@@ -106,9 +159,9 @@
   function updateCase(){const a=currentCase();Object.assign(state,{
     year:a?.year||'',order:a?.order||'',archetype:a?.archetype||'',publishedId:a?.publishedId||'',usual:a?.usual||'',matter:a?.matter||''
   });}
-  function updateType(){const allowed=allowedDocs();if(!allowed.includes(state.documentType))state.documentType=docLocked()?allowed[0]:'';state.indexation=isFreeText()?{format:'text',text:''}:defaultData();state.seed=Math.floor(Math.random()*99999);}
+  function updateType(){resetEditHistory();const allowed=allowedDocs();if(!allowed.includes(state.documentType))state.documentType=docLocked()?allowed[0]:'';state.indexation=isFreeText()?{format:'text',text:''}:defaultData();state.seed=Math.floor(Math.random()*99999);}
   function clearFile(){state.fileName='';fileInput.value='';}
-  function clearWork(){state=newState();clearFile();dialog.hidden=true;render();view.scrollTop=0;}
+  function clearWork(){resetEditHistory();state=newState();clearFile();dialog.hidden=true;render();view.scrollTop=0;}
   function saveSnapshot(status){
     try {
       const previous=JSON.parse(localStorage.getItem('mdm-poc2-work-snapshots-v1')||'[]');
@@ -193,6 +246,54 @@
       <section class="card"><div class="card-head">Document</div>${kv([['Type de document',state.documentType],['Langue du document',state.documentLanguage],['Fichier',state.fileName]])}</section>
       <section class="card"><div class="card-head">Affaire</div>${kv([['Juridiction',state.jurisdiction],['Affaire',state.affaire],['Année',state.year],['Ordre',state.order],['Archétype procédural',state.archetype],['Id Publié',state.publishedId],['Nom usuel',state.usual],...(hasMatter()?[['Matière',state.matter]]:[])])}</section>`;
   }
+
+  // Vocabulaire DE DÉMONSTRATION. Ne pas confondre avec le référentiel MDM.
+  const DEMO_TERM_SET=new Set([
+    ...Object.values(TERM_POOLS).flat(),...REFERENCE_CHAINS.flat(),...HISTORICAL_CHAINS.flat()
+  ].map(norm));
+  function termKind(term){
+    if(!String(term||'').trim())return '';
+    if(/\*\s*$/.test(term))return 'ia';
+    return DEMO_TERM_SET.has(norm(term))?'demo':'new';
+  }
+  function termKindLabel(kind){
+    return kind==='ia'?'Suggestion intelligente (*) : simulée'
+      :kind==='demo'?'Terme présent dans les exemples de la PoC (non vérifié dans MDM)'
+      :'Nouveau terme à vérifier (référentiel MDM non connecté)';
+  }
+  function approxDistance(a,b,limit=2){
+    if(Math.abs(a.length-b.length)>limit)return limit+1;
+    let prev=Array.from({length:b.length+1},(_,i)=>i);
+    for(let i=1;i<=a.length;i++){
+      const next=[i];let min=i;
+      for(let j=1;j<=b.length;j++){
+        const cost=a[i-1]===b[j-1]?0:1;
+        const value=Math.min(prev[j]+1,next[j-1]+1,prev[j-1]+cost);
+        next[j]=value;min=Math.min(min,value);
+      }
+      if(min>limit)return limit+1;
+      prev=next;
+    }
+    return prev[b.length];
+  }
+  function demoSearch(query){
+    const q=norm(query);
+    if(!q)return nextTerms().map(term=>({term,approx:false}));
+    const candidates=unique([...pool(),...REFERENCE_CHAINS.flat(),...HISTORICAL_CHAINS.flat(),...AI_TERMS]);
+    const ranked=candidates.map((term,index)=>{
+      const target=norm(term.replace(/\s*\*$/,''));
+      let rank=target===q?0:target.startsWith(q)?1:target.includes(q)?2:99;
+      if(rank===99&&q.length>=4){
+        const limit=q.length>8?2:1;
+        const words=target.split(/[\s'’\-]+/).filter(Boolean);
+        const distance=Math.min(approxDistance(q,target,limit),...words.map(word=>approxDistance(q,word,limit)));
+        if(distance<=limit)rank=3+distance;
+      }
+      return {term,rank,index,approx:rank>=3&&rank<99};
+    }).filter(item=>item.rank!==99);
+    return ranked.sort((a,b)=>a.rank-b.rank||a.index-b.index).slice(0,3);
+  }
+
   function termChip(line,index,value,isEmpty=false){
     return `<div class="term-wrap" data-drag-line="${line}" data-drag-index="${index}">
       ${index?'<span class="term-divider">-</span>':''}
@@ -252,7 +353,7 @@
   function resultLines(){if(isFreeText())return [state.indexation.text.trim()].filter(Boolean);return state.indexation.lines.map(arr=>arr.map(x=>x.trim()).filter(Boolean).join(' - ')).filter(Boolean);}
   function resultText(){return resultLines().join('\n');}
   function hasAi(){return resultText().split('\n').some(x=>x.includes('*'));}
-  function newTerms(){if(isFreeText())return [];const known=new Set([...pool(),...AI_TERMS].filter(x=>!x.endsWith('*')).map(norm));return unique(state.indexation.lines.flat().map(x=>x.trim()).filter(x=>x&&!known.has(norm(x.replace(/\s*\*$/,'')))));}
+  function newTerms(){if(isFreeText())return [];return unique(state.indexation.lines.flat().map(x=>x.trim()).filter(x=>termKind(x)==='new'));}
   function renderReview(){
     const fresh=newTerms();const ai=hasAi();const lines=resultLines();
     const caseRows=[
