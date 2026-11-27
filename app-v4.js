@@ -297,7 +297,7 @@
   }
 
 
-  // Correcteur orthographique natif. Aucun texte transmis à un service externe.
+  // Correcteur orthographique natif. La PoC n'appelle pas de service externe; les paramètres du navigateur déterminent la confidentialité de la correction.
   const SPELLING_LANG = {
     'Allemand':'de','Anglais':'en','Bulgare':'bg','Croate':'hr','Danois':'da',
     'Espagnol':'es','Estonien':'et','Finnois':'fi','Français':'fr','Grec':'el',
@@ -377,7 +377,7 @@
   }
   function resultLines(){if(isFreeText())return [state.indexation.text.trim()].filter(Boolean);return state.indexation.lines.map(arr=>arr.map(x=>x.trim()).filter(Boolean).join(' - ')).filter(Boolean);}
   function resultText(){return resultLines().join('\n');}
-  function hasAi(){return resultText().split('\n').some(x=>x.includes('*'));}
+  function hasAi(){return isFreeText()?state.indexation.text.includes('*'):state.indexation.lines.flat().some(term=>termKind(term)==='ia');}
   function newTerms(){if(isFreeText())return [];return unique(state.indexation.lines.flat().map(x=>x.trim()).filter(x=>termKind(x)==='new'));}
 
   // Les listes sont repliées par défaut et référencent un maillon précis.
