@@ -378,8 +378,58 @@
   function resultText(){return resultLines().join('\n');}
   function hasAi(){return resultText().split('\n').some(x=>x.includes('*'));}
   function newTerms(){if(isFreeText())return [];return unique(state.indexation.lines.flat().map(x=>x.trim()).filter(x=>termKind(x)==='new'));}
+
+  // Les listes sont repliées par défaut et référencent un maillon précis.
+  function reviewEntries(kind){
+    if(isFreeText()){
+      return kind==='ia' && hasAi() ? [{term:state.indexation.text.trim(),line:0,index:-1}] : [];
+    }
+    return state.indexation.lines.flatMap((terms,line)=>
+      terms.map((term,index)=>({term,line,index})).filter(item=>termKind(item.term)===kind));
+  }
+  function reviewCheck(kind,items){
+    const isNew=kind==='new';
+    const heading=isNew?'Nouveau terme':'Suggestion intelligente (*)';
+    const count=items.length;
+    const small=isNew?(count?count+' à vérifier':'Aucun terme nouveau')
+      :(count?count+' suggestion'+(count>1?'s':'')+' IA':'Aucune suggestion IA');
+    const empty=isNew?'Aucun nouveau terme détecté dans les exemples de la PoC.'
+      :'Aucune suggestion IA retenue dans le résultat.';
+    const list=count?items.map(item=>{
+      const location=item.index<0?'Texte libre':canMultipleLines()
+        ?'Ligne '+(item.line+1)+' · Maillon '+(item.index+1):'Maillon '+(item.index+1);
+      return '<div class="review-check-term">' +
+        '<div class="review-check-term-copy"><span class="review-check-term-text" title="'+esc(item.term)+'">'+esc(item.term)+'</span>' +
+        '<small>'+location+'</small></div>' +
+        '<button type="button" class="review-edit-term" data-action="review-edit-term" data-line="'+item.line+
+        '" data-index="'+item.index+'" aria-label="Modifier le maillon : '+esc(item.term)+
+        '" title="Revenir au maillon et le modifier">✎ Modifier</button></div>';
+    }).join(''):'<p class="review-no-terms">'+empty+'</p>';
+    return '<details class="review-check-detail">' +
+      '<summary class="review-check-row" aria-label="'+heading+' : afficher les détails">' +
+        '<span class="check-dot '+(count?'review-caution':'')+'">'+(count?'!':'✓')+'</span>' +
+        '<span class="review-check-copy"><strong>'+heading+'</strong><small>'+small+'</small></span>' +
+        '<span class="review-check-state '+(count?'needs-review':'')+'">'+(count?'À vérifier':'OK')+'</span>' +
+        '<span class="review-check-chevron" aria-hidden="true">⌄</span>' +
+      '</summary><div class="review-check-expanded">'+list+'</div></details>';
+  }
+  function editTermFromReview(line,index){
+    if(state.step!==3)return;
+    const free=isFreeText();
+    if(!free && (!Number.isInteger(line)||!Number.isInteger(index)||line<0||index<0||!getLine(line)[index]))return;
+    state.indexation.activeLine=free?0:line;
+    navigate(2);
+    const input=free?$('[data-free-text]'):
+      $('[data-term-line="'+line+'"][data-term-index="'+index+'"]');
+    if(!input)return;
+    input.focus();
+    input.select();
+    input.closest('.term-chip')?.classList.add('review-focus-highlight');
+    input.scrollIntoView?.({block:'center',inline:'nearest'});
+  }
+
   function renderReview(){
-    const fresh=newTerms();const ai=hasAi();const lines=resultLines();
+    const freshEntries=reviewEntries('new');const aiEntries=reviewEntries('ia');const lines=resultLines();
     const caseRows=[
       ['Juridiction',state.jurisdiction],['Affaire',state.affaire],['Année',state.year],
       ['Ordre',state.order],['Archétype procédural',state.archetype],
@@ -415,12 +465,8 @@
         <section class="card review-checks-card">
           <div class="card-head">Vérifications</div>
           <div class="review-checks-body">
-            <div class="review-check-row"><span class="check-dot ${fresh.length?'review-caution':''}">${fresh.length?'!':'✓'}</span>
-              <div class="review-check-copy"><strong>Nouveau terme</strong><small>${fresh.length?`${fresh.length} à vérifier`:'Aucun terme nouveau'}</small></div>
-              <span class="review-check-state ${fresh.length?'needs-review':''}">${fresh.length?'À vérifier':'OK'}</span></div>
-            <div class="review-check-row"><span class="check-dot ${ai?'review-caution':''}">${ai?'!':'✓'}</span>
-              <div class="review-check-copy"><strong>Suggestion intelligente (*)</strong><small>${ai?'Proposition IA détectée':'Aucune suggestion IA'}</small></div>
-              <span class="review-check-state ${ai?'needs-review':''}">${ai?'À vérifier':'OK'}</span></div>
+            ${reviewCheck('new',freshEntries)}
+            ${reviewCheck('ia',aiEntries)}
           </div>
           <div class="review-check-footnote">Contrôles sur vocabulaire fictif. Référentiel MDM non connecté.</div>
         </section>
@@ -513,6 +559,7 @@
       case 'next-form':advanceTo(2);break;
       case 'previous':navigate(state.step-1);break;
       case 'next-review':advanceTo(3);break;
+      case 'review-edit-term':editTermFromReview(l,idx);break;
       case 'attach-file':fileInput.click();break;
       case 'remove-file':clearFile();render();toast('Fichier retiré. Les métadonnées restent inchangées.');break;
       case 'save-draft':saveDraft();break;
