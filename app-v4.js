@@ -179,6 +179,7 @@
     if(target===0){state.step=0;render();view.scrollTop=0;return;}
     if(target===1&&state.step===0){startWork();return;}
     if(target<1||target>state.maxStep)return;
+    if(target===3&&state.step!==3){if(!resultText()){toast('Saisissez un résultat avant la révision.');return;}normalizeBeforeReview();}
     state.step=target;render();view.scrollTop=0;
   }
   function checkMeta(){
