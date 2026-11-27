@@ -188,7 +188,7 @@
     if(!allowedDocs().includes(state.documentType)){toast('Ce type de document ne correspond pas au type d’indexation.');return false;}
     return true;
   }
-  function advanceTo(target){if(target===2&&!checkMeta())return;if(target===3&&!resultText()){toast("Saisissez le résultat d'indexation avant la révision.");return;}state.maxStep=Math.max(state.maxStep,target);state.step=target;render();view.scrollTop=0;}
+  function advanceTo(target){if(target===2&&!checkMeta())return;if(target===3&&!resultText()){toast("Saisissez le résultat d'indexation avant la révision.");return;}if(target===3)normalizeBeforeReview();state.maxStep=Math.max(state.maxStep,target);state.step=target;render();view.scrollTop=0;}
   function renderChrome(){
     const crumbs=[{label:"Travail d'indexation",step:0}];
     if(state.step>=1)crumbs.push({label:'Nouvelle indexation',step:1});
@@ -295,12 +295,35 @@
     return ranked.sort((a,b)=>a.rank-b.rank||a.index-b.index).slice(0,3);
   }
 
+
+  // Correcteur orthographique natif. Aucun texte transmis à un service externe.
+  const SPELLING_LANG = {
+    'Allemand':'de','Anglais':'en','Bulgare':'bg','Croate':'hr','Danois':'da',
+    'Espagnol':'es','Estonien':'et','Finnois':'fi','Français':'fr','Grec':'el',
+    'Hongrois':'hu','Irlandais':'ga','Italien':'it','Letton':'lv','Lituanien':'lt',
+    'Maltais':'mt','Néerlandais':'nl','Polonais':'pl','Portugais':'pt',
+    'Roumain':'ro','Slovaque':'sk','Slovène':'sl','Suédois':'sv','Tchèque':'cs'
+  };
+  function spellingLanguage(){return SPELLING_LANG[state.workLanguage]||'fr';}
+  // Majuscule de la première lettre de chaque maillon; ne modifie pas le reste.
+  function capitalizeMaillon(value){
+    return String(value??'').replace(/^(\s*["'«“‘(\[]*\s*)(\p{L})/u,
+      (_,before,letter)=>before+letter.toLocaleUpperCase(spellingLanguage()));
+  }
+  function normalizeBeforeReview(){
+    if(isFreeText())return;
+    const normalized=state.indexation.lines.map(line=>line.map(capitalizeMaillon));
+    if(JSON.stringify(normalized)===JSON.stringify(state.indexation.lines))return;
+    beforeEdit();
+    state.indexation.lines=normalized;
+  }
+
   function termChip(line,index,value,isEmpty=false){
     return `<div class="term-wrap" data-drag-line="${line}" data-drag-index="${index}">
       ${index?'<span class="term-divider">-</span>':''}
       <div class="term-chip ${isEmpty?'input-empty':'term-kind-'+termKind(value)}" title="${esc(isEmpty?'':termKindLabel(termKind(value)))}">
         ${isEmpty?'':`<button type="button" class="drag-handle" draggable="true" aria-label="Déplacer le maillon ${index+1}" title="Cliquer-glisser pour réordonner">⠿</button>`}
-        <textarea rows="2" data-term-line="${line}" data-term-index="${index}" aria-label="Ligne ${line+1}, maillon ${index+1}" autocomplete="off" spellcheck="false" placeholder="${isEmpty?'Terme suivant…':''}">${esc(value)}</textarea>
+        <textarea rows="2" data-term-line="${line}" data-term-index="${index}" aria-label="Ligne ${line+1}, maillon ${index+1}" autocomplete="off" spellcheck="true" lang="${esc(spellingLanguage())}" autocapitalize="sentences" title="Orthographe : clic droit pour les corrections du navigateur" placeholder="${isEmpty?'Terme suivant…':''}">${esc(value)}</textarea>
         ${isEmpty?'':`<button type="button" class="remove-term" data-action="remove-term" data-line="${line}" data-index="${index}" title="Supprimer ce terme" aria-label="Supprimer le terme">×</button>`}
       </div><div class="dropdown" hidden></div></div>`;
   }
@@ -311,7 +334,7 @@
   function renderMiddle(){
     const data=state.indexation;
     const body=data.format==='text'
-      ? `<textarea class="free-text" id="freeText" data-free-text placeholder="Saisissez l'objet ou choisissez une proposition de texte…">${esc(data.text)}</textarea><p class="editor-hint">Texte libre : une seule réponse finale.</p>`
+      ? `<textarea class="free-text" id="freeText" data-free-text spellcheck="true" lang="${esc(spellingLanguage())}" autocapitalize="sentences" placeholder="Saisissez l'objet ou choisissez une proposition de texte…">${esc(data.text)}</textarea><p class="editor-hint">Texte libre : une seule réponse finale.</p>`
       : `<div>${data.lines.map((line,i)=>renderLine(i,line)).join('')}${canMultipleLines()?'<button type="button" class="line-add" data-action="add-line">+ Ajouter une ligne</button>':''}<p class="editor-hint"><kbd>Tab</kbd> ou <kbd>Entrée</kbd> crée le maillon suivant. Déplacez les maillons par cliquer-glisser. Le résultat peut être long.</p><div class="term-legend"><span class="legend-demo">Exemple PoC</span><span class="legend-new">Nouveau terme</span><span class="legend-ia">Suggestion IA *</span><small>Statuts indicatifs : aucun référentiel MDM connecté.</small></div></div>`;
     return `<section class="card type-editor type-editor-active"><div class="card-head type-editor-head"><span>${esc(state.indexationType)} <small class="editing-badge">En cours</small></span><div class="edit-header-actions"><button class="plain-btn history-btn" type="button" data-action="history-undo" title="Annuler (Ctrl+Z)" ${undoStack.length?'':'disabled'}>↶ Annuler</button><button class="plain-btn history-btn" type="button" data-action="history-redo" title="Rétablir (Ctrl+Y)" ${redoStack.length?'':'disabled'}>↷ Rétablir</button><button class="tiny-icon-btn" type="button" data-action="clear-result" title="Effacer l'indexation">×</button></div></div><div class="editor-area">${body}</div></section>`;
   }
